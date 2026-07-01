@@ -17,3 +17,23 @@ class DummyProvider(BaseProvider):
             "instruction": task.instruction,
             "input_data": task.input_data,
         }
+
+
+class OpenAIProvider(BaseProvider):
+    def generate(self, task: Task) -> Dict[str, Any]:
+        raise NotImplementedError("OpenAIProvider is not implemented yet.")
+
+
+class OllamaProvider(BaseProvider):
+    def generate(self, task: Task) -> Dict[str, Any]:
+        raise NotImplementedError("OllamaProvider is not implemented yet.")
+
+
+class LMStudioProvider(BaseProvider):
+    def generate(self, task: Task) -> Dict[str, Any]:
+        raise NotImplementedError("LMStudioProvider is not implemented yet.")
+
+
+class OpenRouterProvider(BaseProvider):
+    def generate(self, task: Task) -> Dict[str, Any]:
+        raise NotImplementedError("OpenRouterProvider is not implemented yet.")

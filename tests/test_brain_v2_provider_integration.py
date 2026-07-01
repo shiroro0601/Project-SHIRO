@@ -30,6 +30,18 @@ def test_brain_v2_accepts_dummy_provider():
     assert result["task_type"] == "script_writing"
 
 
+def test_brain_v2_accepts_dummy_provider_name():
+    task = TaskFactory.create_task(
+        task_type=TaskType.PLANNING,
+        instruction="企画を作成してください。",
+    )
+
+    result = BrainV2(provider_name="dummy").ask(task)
+
+    assert result["provider"] == "dummy"
+    assert result["task_type"] == "planning"
+
+
 def test_brain_v2_uses_custom_provider_result():
     class FakeProvider:
         def generate(self, task):
@@ -53,6 +65,24 @@ def test_brain_v2_uses_custom_provider_result():
     }
 
 
+def test_brain_v2_prefers_provider_over_provider_name():
+    class FakeProvider:
+        def generate(self, task):
+            return {
+                "result": "fake provider response",
+                "provider": "fake",
+            }
+
+    task = TaskFactory.create_task(
+        task_type=TaskType.GENERAL,
+        instruction="汎用タスクを実行してください。",
+    )
+
+    result = BrainV2(provider=FakeProvider(), provider_name="dummy").ask(task)
+
+    assert result["provider"] == "fake"
+
+
 def test_brain_v2_propagates_provider_exception():
     class FailingProvider:
         def generate(self, task):
@@ -65,3 +95,13 @@ def test_brain_v2_propagates_provider_exception():
 
     with pytest.raises(RuntimeError, match="provider failed"):
         BrainV2(provider=FailingProvider()).ask(task)
+
+
+def test_brain_v2_openai_provider_name_raises_not_implemented_error():
+    task = TaskFactory.create_task(
+        task_type=TaskType.PLANNING,
+        instruction="企画を作成してください。",
+    )
+
+    with pytest.raises(NotImplementedError, match="OpenAIProvider is not implemented yet."):
+        BrainV2(provider_name="openai").ask(task)
