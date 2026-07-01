@@ -45,7 +45,7 @@ def test_workflow_v2_runs_v10_employees_and_saves_artifacts():
         assert artifact["created_at"] is not None
 
 
-def test_next_employee_receives_previous_artifact_content_only():
+def test_artifact_content_contains_only_artifact_value():
     job = ArtifactJob(job_id="test_artifact_job_002", theme="猫の雑学")
 
     PlannerAI().run(job)
@@ -53,21 +53,18 @@ def test_next_employee_receives_previous_artifact_content_only():
     DirectorAI().run(job)
     ArtistAI().run(job)
 
-    plan_artifact = job.outputs["plan"]
-    script_artifact = job.outputs["script"]
-    direction_artifact = job.outputs["direction"]
-    image_prompt_artifact = job.outputs["image_prompt"]
+    assert list(job.outputs["plan"]["content"].keys()) == ["plan"]
+    assert list(job.outputs["script"]["content"].keys()) == ["script"]
+    assert list(job.outputs["direction"]["content"].keys()) == ["direction"]
+    assert list(job.outputs["image_prompt"]["content"].keys()) == ["image_prompt"]
 
-    assert script_artifact["content"]["input_data"]["plan"] == plan_artifact["content"]
-    assert direction_artifact["content"]["input_data"]["script"] == script_artifact["content"]
-    assert image_prompt_artifact["content"]["input_data"]["direction"] == direction_artifact["content"]
-
-    assert "artifact_id" not in script_artifact["content"]["input_data"]["plan"]
-    assert "artifact_id" not in direction_artifact["content"]["input_data"]["script"]
-    assert "artifact_id" not in image_prompt_artifact["content"]["input_data"]["direction"]
+    for artifact in job.outputs.values():
+        assert "input_data" not in artifact["content"]
+        assert "task_id" not in artifact["content"]
+        assert "artifact_id" not in artifact["content"]
 
 
-def test_task_id_nesting_does_not_grow_through_artifacts():
+def test_artifact_content_has_no_deep_nesting():
     job = ArtifactJob(job_id="test_artifact_job_003", theme="猫の雑学")
 
     PlannerAI().run(job)
@@ -77,7 +74,10 @@ def test_task_id_nesting_does_not_grow_through_artifacts():
 
     for key in ["plan", "script", "direction", "image_prompt"]:
         artifact = job.outputs[key]
-        assert _count_key_recursive(artifact, "task_id") <= 2
+        assert _max_depth(artifact["content"]) == 1
+        assert _count_key_recursive(artifact["content"], "input_data") == 0
+        assert _count_key_recursive(artifact["content"], "task_id") == 0
+        assert _count_key_recursive(artifact["content"], "artifact_id") == 0
         assert _count_key_recursive(artifact, "artifact_id") == 1
 
 
@@ -89,4 +89,12 @@ def _count_key_recursive(value: Any, target_key: str) -> int:
         )
     if isinstance(value, list):
         return sum(_count_key_recursive(item, target_key) for item in value)
+    return 0
+
+
+def _max_depth(value: Any) -> int:
+    if isinstance(value, dict) and value:
+        return 1 + max(_max_depth(child) for child in value.values())
+    if isinstance(value, list) and value:
+        return 1 + max(_max_depth(item) for item in value)
     return 0

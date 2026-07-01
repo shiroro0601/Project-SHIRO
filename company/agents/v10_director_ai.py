@@ -18,7 +18,7 @@ class DirectorAI:
             instruction="台本をもとに演出指示を作成してください。",
             input_data={
                 "theme": getattr(job, "theme", ""),
-                "script": script_artifact.get("content"),
+                "script": script_artifact.get("content", {}).get("script"),
                 "job_id": getattr(job, "job_id", "unknown_job"),
             },
         )
@@ -40,8 +40,5 @@ class DirectorAI:
 
     def _artifact_content(self, output_data: dict) -> dict:
         return {
-            "task_type": output_data.get("task_type"),
-            "instruction": output_data.get("instruction"),
-            "input_data": output_data.get("input_data", {}),
-            "result": output_data.get("result"),
+            "direction": output_data.get("result"),
         }

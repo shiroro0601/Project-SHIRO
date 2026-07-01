@@ -18,7 +18,7 @@ class ArtistAI:
             instruction="演出指示をもとに画像生成プロンプトを作成してください。",
             input_data={
                 "theme": getattr(job, "theme", ""),
-                "direction": direction_artifact.get("content"),
+                "direction": direction_artifact.get("content", {}).get("direction"),
                 "job_id": getattr(job, "job_id", "unknown_job"),
             },
         )
@@ -40,8 +40,5 @@ class ArtistAI:
 
     def _artifact_content(self, output_data: dict) -> dict:
         return {
-            "task_type": output_data.get("task_type"),
-            "instruction": output_data.get("instruction"),
-            "input_data": output_data.get("input_data", {}),
-            "result": output_data.get("result"),
+            "image_prompt": output_data.get("result"),
         }

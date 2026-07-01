@@ -55,8 +55,8 @@ def main():
         print(f"  artifact_id: {artifact['artifact_id']}")
         print(f"  artifact_type: {artifact['artifact_type']}")
         print(f"  source_task_id: {artifact['source_task_id']}")
-        print("  content.input_data:")
-        pprint(artifact["content"].get("input_data", {}), indent=4)
+        print("  content:")
+        pprint(artifact["content"], indent=4)
         print("--------------------------------")
 
 

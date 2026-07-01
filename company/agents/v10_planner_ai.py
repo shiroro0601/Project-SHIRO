@@ -38,8 +38,5 @@ class PlannerAI:
 
     def _artifact_content(self, output_data: dict) -> dict:
         return {
-            "task_type": output_data.get("task_type"),
-            "instruction": output_data.get("instruction"),
-            "input_data": output_data.get("input_data", {}),
-            "result": output_data.get("result"),
+            "plan": output_data.get("result"),
         }
