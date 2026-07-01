@@ -1,5 +1,6 @@
 from typing import Any
 
+from company.core.artifact import ArtifactFactory, ArtifactType
 from company.core.task import TaskType
 from company.core.task_executor import TaskExecutor
 from company.core.task_factory import TaskFactory
@@ -11,21 +12,36 @@ class DirectorAI:
 
     def run(self, job: Any) -> dict:
         outputs = self._ensure_outputs(job)
+        script_artifact = outputs.get("script", {})
         task = TaskFactory.create_task(
             task_type=TaskType.DIRECTION,
             instruction="台本をもとに演出指示を作成してください。",
             input_data={
                 "theme": getattr(job, "theme", ""),
-                "script": outputs.get("script"),
+                "script": script_artifact.get("content"),
                 "job_id": getattr(job, "job_id", "unknown_job"),
             },
         )
 
         completed_task = self.executor.execute(task)
-        outputs["direction"] = completed_task.output_data
+        artifact = ArtifactFactory.create_artifact(
+            artifact_type=ArtifactType.DIRECTION,
+            name="direction",
+            content=self._artifact_content(completed_task.output_data),
+            source_task_id=completed_task.task_id,
+        )
+        outputs["direction"] = artifact.to_dict()
         return completed_task.to_dict()
 
     def _ensure_outputs(self, job: Any) -> dict:
         if not hasattr(job, "outputs"):
             job.outputs = {}
         return job.outputs
+
+    def _artifact_content(self, output_data: dict) -> dict:
+        return {
+            "task_type": output_data.get("task_type"),
+            "instruction": output_data.get("instruction"),
+            "input_data": output_data.get("input_data", {}),
+            "result": output_data.get("result"),
+        }

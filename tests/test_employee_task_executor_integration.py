@@ -26,7 +26,8 @@ def test_planner_ai_creates_plan_output():
     assert result["status"] == "completed"
     assert result["task_type"] == "planning"
     assert "plan" in job.outputs
-    assert job.outputs["plan"]["task_type"] == "planning"
+    assert job.outputs["plan"]["artifact_type"] == "plan"
+    assert job.outputs["plan"]["content"]["task_type"] == "planning"
 
 
 def test_script_writer_ai_creates_script_output():
@@ -38,7 +39,8 @@ def test_script_writer_ai_creates_script_output():
     assert result["status"] == "completed"
     assert result["task_type"] == "script_writing"
     assert "script" in job.outputs
-    assert job.outputs["script"]["input_data"]["plan"] == job.outputs["plan"]
+    assert job.outputs["script"]["artifact_type"] == "script"
+    assert job.outputs["script"]["content"]["input_data"]["plan"] == job.outputs["plan"]["content"]
 
 
 def test_director_ai_creates_direction_output():
@@ -51,7 +53,8 @@ def test_director_ai_creates_direction_output():
     assert result["status"] == "completed"
     assert result["task_type"] == "direction"
     assert "direction" in job.outputs
-    assert job.outputs["direction"]["input_data"]["script"] == job.outputs["script"]
+    assert job.outputs["direction"]["artifact_type"] == "direction"
+    assert job.outputs["direction"]["content"]["input_data"]["script"] == job.outputs["script"]["content"]
 
 
 def test_artist_ai_creates_image_prompt_output():
@@ -65,7 +68,11 @@ def test_artist_ai_creates_image_prompt_output():
     assert result["status"] == "completed"
     assert result["task_type"] == "image_prompt"
     assert "image_prompt" in job.outputs
-    assert job.outputs["image_prompt"]["input_data"]["direction"] == job.outputs["direction"]
+    assert job.outputs["image_prompt"]["artifact_type"] == "image_prompt"
+    assert (
+        job.outputs["image_prompt"]["content"]["input_data"]["direction"]
+        == job.outputs["direction"]["content"]
+    )
 
 
 def test_workflow_v2_runs_v10_employees_in_order():
