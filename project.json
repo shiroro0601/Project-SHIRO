@@ -1,0 +1,43 @@
+{
+  "title": "男性が本命女性だけに見せる行動",
+  "output": "outputs/final_video.mp4",
+  "width": 1280,
+  "height": 720,
+  "scenes": [
+    {
+      "image": "assets/scene1.png",
+      "text": "男性が本命女性だけに見せる行動。",
+      "image_prompt": "romantic anime style, young man looking at woman with gentle eyes, soft lighting, emotional, high quality",
+      "duration": 3.59,
+      "voice": "outputs/voices/scene1.wav"
+    },
+    {
+      "image": "assets/scene2.png",
+      "text": "それは、忙しくても時間を作ろうとすることです。",
+      "image_prompt": "anime couple texting on smartphone, warm room, romantic mood, cinematic lighting",
+      "duration": 4.44,
+      "voice": "outputs/voices/scene2.wav"
+    },
+    {
+      "image": "assets/scene3.png",
+      "text": "好きな人には、少しでも会いたくなるものです。",
+      "image_prompt": "anime couple walking together at sunset, romantic atmosphere, beautiful sky, high quality",
+      "duration": 3.89,
+      "voice": "outputs/voices/scene3.wav"
+    },
+    {
+      "image": "assets/scene4.png",
+      "text": "逆に、毎回忙しいと言うだけなら注意です。",
+      "image_prompt": "anime girl looking at phone sadly, night room, emotional lighting, lonely mood",
+      "duration": 4.29,
+      "voice": "outputs/voices/scene4.wav"
+    },
+    {
+      "image": "assets/scene5.png",
+      "text": "あなたの周りにも、こういう男性いますか？",
+      "image_prompt": "romantic anime girl thinking, soft pink background, gentle expression, high quality",
+      "duration": 3.93,
+      "voice": "outputs/voices/scene5.wav"
+    }
+  ]
+}

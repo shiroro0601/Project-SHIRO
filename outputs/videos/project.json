@@ -1,0 +1,48 @@
+{
+  "width": 1280,
+  "height": 720,
+  "fps": 25,
+  "output": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\videos\\final_video.mp4",
+  "scenes": [
+    {
+      "scene_number": 1,
+      "title": "導入",
+      "text": "皆さんこんにちは。今回はAI社員だけで会社を作るプロジェクトを紹介します。",
+      "image": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\images\\scene1.png",
+      "voice": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\voices\\scene1.wav",
+      "duration": 6.666666666666667
+    },
+    {
+      "scene_number": 2,
+      "title": "企画部",
+      "text": "まず企画部が動画のテーマを考えます。",
+      "image": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\images\\scene2.png",
+      "voice": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\voices\\scene2.wav",
+      "duration": 3.1466666666666665
+    },
+    {
+      "scene_number": 3,
+      "title": "脚本部",
+      "text": "次に脚本部が、視聴者に伝わりやすい台本を作ります。",
+      "image": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\images\\scene3.png",
+      "voice": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\voices\\scene3.wav",
+      "duration": 4.917333333333334
+    },
+    {
+      "scene_number": 4,
+      "title": "制作部",
+      "text": "美術部が画像を作り、声優部が音声を作ります。",
+      "image": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\images\\scene4.png",
+      "voice": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\voices\\scene4.wav",
+      "duration": 4.704
+    },
+    {
+      "scene_number": 5,
+      "title": "編集部",
+      "text": "最後に編集部が、それらをまとめて一本の動画にします。",
+      "image": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\images\\scene5.png",
+      "voice": "C:\\Users\\Koshi\\OneDrive\\Desktop\\AI会社\\outputs\\voices\\scene5.wav",
+      "duration": 4.672
+    }
+  ]
+}

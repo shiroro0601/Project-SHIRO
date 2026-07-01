@@ -1,0 +1,197 @@
+{
+  "project": "Project SHIRO",
+  "version": "0.9",
+  "created_at": "2026-06-29 21:04:40",
+  "updated_at": "2026-06-29 23:30:15",
+  "jobs": [
+    {
+      "job_id": "job_20260629_210441",
+      "theme": "猫の意外な雑学",
+      "created_at": "2026-06-29 21:04:41",
+      "updated_at": "2026-06-29 21:04:41",
+      "status": "test_completed",
+      "planner": {
+        "title": "猫の知られざる能力",
+        "scenes": [
+          "導入",
+          "身体能力",
+          "聴覚",
+          "記憶力",
+          "まとめ"
+        ]
+      },
+      "script_writer": null,
+      "director": null,
+      "artist": null,
+      "voice_actor": null,
+      "editor": null,
+      "quality_checker": null
+    },
+    {
+      "job_id": "job_20260629_210546",
+      "theme": "猫の意外な雑学",
+      "created_at": "2026-06-29 21:05:46",
+      "updated_at": "2026-06-29 21:05:46",
+      "status": "completed",
+      "planner": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n",
+      "script_writer": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n",
+      "director": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは映像監督です。シーン構成と演出を設計します。\n\nprompt:\n\nあなたはProject SHIROの映像監督Directorです。\n\n以下の台本をもとに、動画の演出指示を作成してください。\n\n台本:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n\n\n出力内容:\n1. 全体の映像トーン\n2. シーンごとの映像内容\n3. シーンごとのカメラワーク\n4. シーンごとの背景\n5. シーンごとのキャラクター表情\n6. 字幕表示の方針\n7. 画像生成担当Artistへの指示\n\n条件:\n・YouTubeショート向け\n・5シーン構成\n・Stable Diffusionで画像化しやすい内容\n・1シーン1枚の画像を前提\n・視聴者が飽きないテンポ\n・抽象的すぎる表現は禁止\n\n",
+      "artist": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは画像生成担当です。Stable Diffusion用のプロンプトを作ります。\n\nprompt:\n\nあなたはProject SHIROの画像生成担当Artistです。\n\n以下の映像演出指示をもとに、Stable Diffusion用の画像生成プロンプトを作成してください。\n\n映像演出指示:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは映像監督です。シーン構成と演出を設計します。\n\nprompt:\n\nあなたはProject SHIROの映像監督Directorです。\n\n以下の台本をもとに、動画の演出指示を作成してください。\n\n台本:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n\n\n出力内容:\n1. 全体の映像トーン\n2. シーンごとの映像内容\n3. シーンごとのカメラワーク\n4. シーンごとの背景\n5. シーンごとのキャラクター表情\n6. 字幕表示の方針\n7. 画像生成担当Artistへの指示\n\n条件:\n・YouTubeショート向け\n・5シーン構成\n・Stable Diffusionで画像化しやすい内容\n・1シーン1枚の画像を前提\n・視聴者が飽きないテンポ\n・抽象的すぎる表現は禁止\n\n\n\n出力内容:\n1. 全体の画風\n2. シーン1のpositive prompt\n3. シーン1のnegative prompt\n4. シーン2のpositive prompt\n5. シーン2のnegative prompt\n6. シーン3のpositive prompt\n7. シーン3のnegative prompt\n8. シーン4のpositive prompt\n9. シーン4のnegative prompt\n10. シーン5のpositive prompt\n11. シーン5のnegative prompt\n\n条件:\n・Stable Diffusionで使いやすい英語プロンプトにする\n・各シーンは1枚絵として成立させる\n・高品質なアニメ調\n・縦長動画向け\n・キャラクターの破綻を避ける\n・背景を具体的に書く\n・negative promptには低品質・崩れ・余分な指などを入れる\n・日本語の説明も少し添える\n\n",
+      "voice_actor": null,
+      "editor": null,
+      "quality_checker": null
+    },
+    {
+      "job_id": "job_20260629_232431",
+      "theme": "猫の意外な雑学",
+      "status": "completed",
+      "created_at": "2026-06-29 23:24:31",
+      "updated_at": "2026-06-29 23:24:31",
+      "planner": "Plannerテスト結果",
+      "script_writer": "ScriptWriterテスト結果",
+      "director": null,
+      "artist": null,
+      "voice_actor": null,
+      "editor": null,
+      "quality_checker": null,
+      "outputs": {
+        "images": [],
+        "voices": [],
+        "video": null,
+        "report": null
+      },
+      "logs": [
+        {
+          "time": "2026-06-29 23:24:31",
+          "message": "status changed to completed"
+        },
+        {
+          "time": "2026-06-29 23:24:31",
+          "message": "planner updated"
+        },
+        {
+          "time": "2026-06-29 23:24:31",
+          "message": "script_writer updated"
+        }
+      ]
+    },
+    {
+      "job_id": "job_20260629_233015",
+      "theme": "猫の意外な雑学",
+      "status": "completed",
+      "created_at": "2026-06-29 23:30:15",
+      "updated_at": "2026-06-29 23:30:15",
+      "planner": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n",
+      "script_writer": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n",
+      "director": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは映像監督です。シーン構成と演出を設計します。\n\nprompt:\n\nあなたはProject SHIROの映像監督Directorです。\n\n以下の台本をもとに、動画の演出指示を作成してください。\n\n台本:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n\n\n出力内容:\n1. 全体の映像トーン\n2. シーンごとの映像内容\n3. シーンごとのカメラワーク\n4. シーンごとの背景\n5. シーンごとのキャラクター表情\n6. 字幕表示の方針\n7. 画像生成担当Artistへの指示\n\n条件:\n・YouTubeショート向け\n・5シーン構成\n・Stable Diffusionで画像化しやすい内容\n・1シーン1枚の画像を前提\n・視聴者が飽きないテンポ\n・抽象的すぎる表現は禁止\n\n",
+      "artist": "【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは画像生成担当です。Stable Diffusion用のプロンプトを作ります。\n\nprompt:\n\nあなたはProject SHIROの画像生成担当Artistです。\n\n以下の映像演出指示をもとに、Stable Diffusion用の画像生成プロンプトを作成してください。\n\n映像演出指示:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは映像監督です。シーン構成と演出を設計します。\n\nprompt:\n\nあなたはProject SHIROの映像監督Directorです。\n\n以下の台本をもとに、動画の演出指示を作成してください。\n\n台本:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは脚本家です。視聴維持率の高い台本を書きます。\n\nprompt:\n\nあなたはProject SHIROの脚本家ScriptWriterです。\n\n以下の企画をもとに、YouTubeショート動画用の台本を書いてください。\n\n企画:\n【DUMMY LLM RESPONSE】\nAI Brainは正常に動作しています。\n\nsystem:\n\nあなたはProject SHIROのAI会社に所属する社員です。\n目的は、YouTube向けの高品質な動画を自動生成することです。\n日本語で、実用的で、具体的に答えてください。\n\nあなたは企画担当です。動画のテーマ、構成、狙いを考えます。\n\nprompt:\n\nあなたはProject SHIROの企画担当Plannerです。\n\n以下のテーマでYouTubeショート動画の企画を作ってください。\n\nテーマ:\n猫の意外な雑学\n\n出力内容:\n1. 動画タイトル\n2. 狙う視聴者\n3. 動画の目的\n4. 5シーン構成\n5. 視聴維持率を上げる工夫\n6. サムネイル案\n7. 最後の一言\n\n条件:\n・日本語\n・ショート動画向け\n・テンポ重視\n・実際に動画化しやすい内容\n\n\n\n出力内容:\n1. 動画タイトル\n2. ナレーション台本\n3. シーンごとのセリフ\n4. 字幕テキスト\n5. 視聴維持率を上げるフック\n6. ラストの締め\n\n条件:\n・日本語\n・60秒以内\n・5シーン構成\n・1シーンあたり短く\n・VOICEVOXで読みやすい文章\n・字幕にしやすい短文\n・テンポ重視\n\n\n\n出力内容:\n1. 全体の映像トーン\n2. シーンごとの映像内容\n3. シーンごとのカメラワーク\n4. シーンごとの背景\n5. シーンごとのキャラクター表情\n6. 字幕表示の方針\n7. 画像生成担当Artistへの指示\n\n条件:\n・YouTubeショート向け\n・5シーン構成\n・Stable Diffusionで画像化しやすい内容\n・1シーン1枚の画像を前提\n・視聴者が飽きないテンポ\n・抽象的すぎる表現は禁止\n\n\n\n出力内容:\n1. 全体の画風\n2. シーン1のpositive prompt\n3. シーン1のnegative prompt\n4. シーン2のpositive prompt\n5. シーン2のnegative prompt\n6. シーン3のpositive prompt\n7. シーン3のnegative prompt\n8. シーン4のpositive prompt\n9. シーン4のnegative prompt\n10. シーン5のpositive prompt\n11. シーン5のnegative prompt\n\n条件:\n・Stable Diffusionで使いやすい英語プロンプトにする\n・各シーンは1枚絵として成立させる\n・高品質なアニメ調\n・縦長動画向け\n・キャラクターの破綻を避ける\n・背景を具体的に書く\n・negative promptには低品質・崩れ・余分な指などを入れる\n・日本語の説明も少し添える\n\n",
+      "voice_actor": null,
+      "editor": null,
+      "quality_checker": null,
+      "outputs": {
+        "images": [],
+        "voices": [],
+        "video": null,
+        "report": null
+      },
+      "logs": [
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "status changed to running"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] Project SHIRO AI Video Workflow started"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] PlannerAI started"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[PlannerAI] 企画作成を開始します。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "planner updated"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[PlannerAI] 企画作成を完了しました。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] PlannerAI completed"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] ScriptWriterAI started"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[ScriptWriterAI] 台本作成を開始します。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "script_writer updated"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[ScriptWriterAI] 台本作成を完了しました。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] ScriptWriterAI completed"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] DirectorAI started"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[DirectorAI] 演出設計を開始します。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "director updated"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[DirectorAI] 演出設計を完了しました。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] DirectorAI completed"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] ArtistAI started"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[ArtistAI] 画像生成プロンプト作成を開始します。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "artist updated"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[ArtistAI] 画像生成プロンプト作成を完了しました。"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] ArtistAI completed"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "status changed to completed"
+        },
+        {
+          "time": "2026-06-29 23:30:15",
+          "message": "[Workflow] Project SHIRO AI Video Workflow completed"
+        }
+      ]
+    }
+  ]
+}
