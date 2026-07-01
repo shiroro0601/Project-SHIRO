@@ -18,7 +18,8 @@ def test_task_executor_executes_with_brain_v2():
 
     assert result is task
     assert task.status == TaskStatus.COMPLETED
-    assert "BrainV2 dummy response" in task.output_data["result"]
+    assert "DummyProvider response" in task.output_data["result"]
+    assert task.output_data["provider"] == "dummy"
     assert task.output_data["task_type"] == "script_writing"
     assert task.output_data["instruction"] == "台本を作成してください。"
     assert task.output_data["input_data"] == {"plan": "猫の雑学企画"}
