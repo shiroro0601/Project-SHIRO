@@ -13,11 +13,14 @@ class TaskExecutor:
     - EmployeeがTask実行の詳細を直接持たなくてよい構造にする
     """
 
+    def __init__(self, brain=None):
+        self.brain = brain
+
     def execute(self, task: Task) -> Task:
         task.start()
 
         try:
-            output_data = self._execute_dummy_brain(task)
+            output_data = self.brain.ask(task) if self.brain else self._execute_dummy_brain(task)
             task.complete(output_data)
             return task
         except Exception as e:
