@@ -18,7 +18,7 @@ class ScriptWriterAI:
             instruction="企画をもとに台本を作成してください。",
             input_data={
                 "theme": getattr(job, "theme", ""),
-                "plan": plan_artifact.get("content"),
+                "plan": plan_artifact.get("content", {}).get("plan"),
                 "job_id": getattr(job, "job_id", "unknown_job"),
             },
         )
@@ -40,8 +40,5 @@ class ScriptWriterAI:
 
     def _artifact_content(self, output_data: dict) -> dict:
         return {
-            "task_type": output_data.get("task_type"),
-            "instruction": output_data.get("instruction"),
-            "input_data": output_data.get("input_data", {}),
-            "result": output_data.get("result"),
+            "script": output_data.get("result"),
         }
