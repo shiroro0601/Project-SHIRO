@@ -1,5 +1,6 @@
 from company.brain import Brain
 from company.core.employee_role import DefaultEmployeeRole
+from company.core.task import Task
 from company.core.task_executor import TaskExecutor
 
 
@@ -23,9 +24,15 @@ class Employee:
 
     def execute_task(self, task):
         prepared_task = self.employee_role.prepare(task)
-        role_task = self.employee_role.execute(prepared_task)
-        executable_task = role_task if role_task is not None else prepared_task
-        result = self.task_executor.execute(executable_task)
+        executable_task = prepared_task if prepared_task is not None else task
+        role_result = self.employee_role.execute(executable_task)
+        result = (
+            self.task_executor.execute(role_result)
+            if isinstance(role_result, Task)
+            else role_result
+        )
+        if result is None:
+            result = self.task_executor.execute(executable_task)
         finalized_result = self.employee_role.finalize(result)
         return finalized_result if finalized_result is not None else result
 
