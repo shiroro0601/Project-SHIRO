@@ -213,3 +213,42 @@ class VoiceRole(DefaultEmployeeRole):
             return instruction
 
         return "unknown topic"
+
+
+class EditorRole(DefaultEmployeeRole):
+    name = "Editor"
+
+    def __init__(self, editor=None):
+        self.topic = ""
+        self.editor = editor
+
+    def prepare(self, task):
+        self.topic = self._extract_topic(task)
+        return task
+
+    def execute(self, task):
+        if self.editor is not None:
+            if hasattr(self.editor, "generate"):
+                return self.editor.generate(task)
+            if hasattr(self.editor, "edit"):
+                return self.editor.edit(task)
+
+        topic = self.topic or self._extract_topic(task)
+        return f"Video edit plan for: {topic}"
+
+    def finalize(self, result):
+        return result
+
+    def _extract_topic(self, task) -> str:
+        input_data = getattr(task, "input_data", {}) or {}
+
+        for key in ("topic", "theme", "title"):
+            value = input_data.get(key)
+            if value:
+                return str(value)
+
+        instruction = getattr(task, "instruction", "")
+        if instruction:
+            return instruction
+
+        return "unknown topic"
