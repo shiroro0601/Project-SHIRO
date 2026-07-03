@@ -141,3 +141,39 @@ class ReviewerRole(DefaultEmployeeRole):
             return instruction
 
         return "unknown topic"
+
+
+class ImageRole(DefaultEmployeeRole):
+    name = "Image"
+
+    def __init__(self, generator: TextGenerationProvider | None = None):
+        self.topic = ""
+        self.generator = generator
+
+    def prepare(self, task):
+        self.topic = self._extract_topic(task)
+        return task
+
+    def execute(self, task):
+        topic = self.topic or self._extract_topic(task)
+        prompt = f"Image prompt for: {topic}"
+        if self.generator is not None:
+            return self.generator.generate(prompt)
+        return prompt
+
+    def finalize(self, result):
+        return result
+
+    def _extract_topic(self, task) -> str:
+        input_data = getattr(task, "input_data", {}) or {}
+
+        for key in ("topic", "theme", "title"):
+            value = input_data.get(key)
+            if value:
+                return str(value)
+
+        instruction = getattr(task, "instruction", "")
+        if instruction:
+            return instruction
+
+        return "unknown topic"
