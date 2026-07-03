@@ -41,7 +41,6 @@ def test_provider_registry_unknown_provider_raises_value_error():
     ("provider_name", "message"),
     [
         ("openai", "OpenAIProvider is not implemented yet."),
-        ("ollama", "OllamaProvider is not implemented yet."),
         ("lmstudio", "LMStudioProvider is not implemented yet."),
         ("openrouter", "OpenRouterProvider is not implemented yet."),
     ],
