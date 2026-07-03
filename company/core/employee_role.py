@@ -1,6 +1,11 @@
 from typing import Protocol
 
 
+class TextGenerationProvider(Protocol):
+    def generate(self, prompt: str) -> str:
+        ...
+
+
 class EmployeeRole(Protocol):
     name: str
 
@@ -30,8 +35,9 @@ class DefaultEmployeeRole:
 class ResearchRole(DefaultEmployeeRole):
     name = "Researcher"
 
-    def __init__(self):
+    def __init__(self, provider: TextGenerationProvider | None = None):
         self.topic = ""
+        self.provider = provider
 
     def prepare(self, task):
         self.topic = self._extract_topic(task)
@@ -39,6 +45,10 @@ class ResearchRole(DefaultEmployeeRole):
 
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
+        if self.provider is not None:
+            return self.provider.generate(
+                f"次のテーマについて調査してください: {topic}"
+            )
         return f"Research result for: {topic}"
 
     def finalize(self, result):
@@ -62,8 +72,9 @@ class ResearchRole(DefaultEmployeeRole):
 class WriterRole(DefaultEmployeeRole):
     name = "Writer"
 
-    def __init__(self):
+    def __init__(self, provider: TextGenerationProvider | None = None):
         self.topic = ""
+        self.provider = provider
 
     def prepare(self, task):
         self.topic = self._extract_topic(task)
@@ -71,6 +82,10 @@ class WriterRole(DefaultEmployeeRole):
 
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
+        if self.provider is not None:
+            return self.provider.generate(
+                f"次のテーマについてYouTubeショート用の台本を書いてください: {topic}"
+            )
         return f"Script draft for: {topic}"
 
     def finalize(self, result):
@@ -94,8 +109,9 @@ class WriterRole(DefaultEmployeeRole):
 class ReviewerRole(DefaultEmployeeRole):
     name = "Reviewer"
 
-    def __init__(self):
+    def __init__(self, provider: TextGenerationProvider | None = None):
         self.topic = ""
+        self.provider = provider
 
     def prepare(self, task):
         self.topic = self._extract_topic(task)
@@ -103,6 +119,10 @@ class ReviewerRole(DefaultEmployeeRole):
 
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
+        if self.provider is not None:
+            return self.provider.generate(
+                f"次の成果物をレビューしてください: {topic}"
+            )
         return f"Review result: approved for {topic}"
 
     def finalize(self, result):
