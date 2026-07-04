@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from company.automation.browser import BrowserController
+
 
 class YouTubeStudioPublisher:
     def __init__(
@@ -9,10 +11,12 @@ class YouTubeStudioPublisher:
         dry_run: bool = True,
         upload_url: str = "https://studio.youtube.com",
         output_dir: str = "outputs/publish",
+        browser: BrowserController | None = None,
     ):
         self.dry_run = dry_run
         self.upload_url = upload_url
         self.output_dir = Path(output_dir)
+        self.browser = browser
 
     def generate(self, payload) -> dict:
         input_data = getattr(payload, "input_data", payload) or {}
@@ -38,8 +42,25 @@ class YouTubeStudioPublisher:
             "description": metadata.get("description", ""),
             "tags": metadata.get("tags", []),
         }
+        if self.browser is not None:
+            self._record_browser_dry_run(video_path, result)
+
         self._save_dry_run_result(result)
         return result
+
+    def _record_browser_dry_run(self, video_path: str, metadata: dict) -> None:
+        tags = metadata.get("tags", [])
+        tags_text = ", ".join(tags) if isinstance(tags, list) else str(tags)
+
+        self.browser.open(self.upload_url)
+        self.browser.upload("input[type=file]", video_path)
+        self.browser.fill("input[name=title]", metadata["title"])
+        self.browser.fill(
+            "textarea[name=description]",
+            metadata.get("description", ""),
+        )
+        self.browser.fill("input[name=tags]", tags_text)
+        self.browser.click("button[data-test-id=draft-save]")
 
     def _save_dry_run_result(self, result: dict) -> Path:
         self.output_dir.mkdir(parents=True, exist_ok=True)
