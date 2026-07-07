@@ -60,9 +60,13 @@ def test_research_role_uses_provider_with_research_prompt():
     result = role.execute(task)
 
     assert result == "provider research result"
-    assert provider.prompts == [
-        "次のテーマについて調査してください: 猫の意外な雑学"
-    ]
+    prompt = provider.prompts[0]
+    assert "YouTubeショート動画のリサーチャー" in prompt
+    assert "日本語" in prompt
+    assert "5個" in prompt
+    assert "雑学" in prompt
+    assert "テーマ" in prompt
+    assert "猫の意外な雑学" in prompt
 
 
 def test_writer_role_uses_provider_with_writer_prompt():
@@ -74,9 +78,13 @@ def test_writer_role_uses_provider_with_writer_prompt():
     result = role.execute(task)
 
     assert result == "provider script draft"
-    assert provider.prompts == [
-        "次のテーマについてYouTubeショート用の台本を書いてください: 犬の行動心理"
-    ]
+    prompt = provider.prompts[0]
+    assert "YouTubeショート動画の台本作家" in prompt
+    assert "60秒以内" in prompt
+    assert "冒頭の引き" in prompt
+    assert "本編3点" in prompt
+    assert "まとめ" in prompt
+    assert "犬の行動心理" in prompt
 
 
 def test_reviewer_role_uses_provider_with_reviewer_prompt():
@@ -88,9 +96,12 @@ def test_reviewer_role_uses_provider_with_reviewer_prompt():
     result = role.execute(task)
 
     assert result == "provider review result"
-    assert provider.prompts == [
-        "次の成果物をレビューしてください: 海の不思議"
-    ]
+    prompt = provider.prompts[0]
+    assert "YouTubeショート動画の編集長" in prompt
+    assert "合格" in prompt
+    assert "修正必要" in prompt
+    assert "改善点" in prompt
+    assert "海の不思議" in prompt
 
 
 def test_provider_generate_result_becomes_execute_return_value():
