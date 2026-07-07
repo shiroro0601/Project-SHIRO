@@ -8,11 +8,11 @@ class FakeProvider:
 
     def generate(self, prompt: str) -> str:
         self.prompts.append(prompt)
-        if "調査してください" in prompt:
+        if "YouTubeショート動画のリサーチャー" in prompt:
             return "fake research result"
-        if "台本を書いてください" in prompt:
+        if "YouTubeショート動画の台本作家" in prompt:
             return "fake script result"
-        if "レビューしてください" in prompt:
+        if "YouTubeショート動画の編集長" in prompt:
             return "fake review result"
         return "fake text result"
 

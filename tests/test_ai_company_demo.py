@@ -7,11 +7,11 @@ class FakeProvider:
 
     def generate(self, prompt: str) -> str:
         self.prompts.append(prompt)
-        if "調査してください" in prompt:
+        if "YouTubeショート動画のリサーチャー" in prompt:
             return "Research result from provider"
-        if "台本を書いてください" in prompt:
+        if "YouTubeショート動画の台本作家" in prompt:
             return "Script draft from provider"
-        if "レビューしてください" in prompt:
+        if "YouTubeショート動画の編集長" in prompt:
             return "Review result from provider"
         return "Unknown provider result"
 
@@ -59,8 +59,14 @@ def test_ai_company_demo_uses_role_specific_prompts_in_order():
 
     run_demo(provider=provider, theme="猫の意外な雑学")
 
-    assert provider.prompts == [
-        "次のテーマについて調査してください: 猫の意外な雑学",
-        "次のテーマについてYouTubeショート用の台本を書いてください: 猫の意外な雑学",
-        "次の成果物をレビューしてください: 猫の意外な雑学",
-    ]
+    assert len(provider.prompts) == 3
+    assert "YouTubeショート動画のリサーチャー" in provider.prompts[0]
+    assert "テーマ" in provider.prompts[0]
+    assert "猫の意外な雑学" in provider.prompts[0]
+    assert "YouTubeショート動画の台本作家" in provider.prompts[1]
+    assert "60秒以内" in provider.prompts[1]
+    assert "猫の意外な雑学" in provider.prompts[1]
+    assert "YouTubeショート動画の編集長" in provider.prompts[2]
+    assert "合格" in provider.prompts[2]
+    assert "修正必要" in provider.prompts[2]
+    assert "猫の意外な雑学" in provider.prompts[2]

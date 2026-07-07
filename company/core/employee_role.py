@@ -46,13 +46,21 @@ class ResearchRole(DefaultEmployeeRole):
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
         if self.provider is not None:
-            return self.provider.generate(
-                f"次のテーマについて調査してください: {topic}"
-            )
+            return self.provider.generate(self._build_prompt(topic))
         return f"Research result for: {topic}"
 
     def finalize(self, result):
         return result
+
+    def _build_prompt(self, topic: str) -> str:
+        return (
+            "あなたはYouTubeショート動画のリサーチャーです。\n"
+            "次のテーマについて、視聴者が「知らなかった」と感じる雑学を"
+            "日本語で5個出してください。\n"
+            "事実ベースで、短く、箇条書きで出してください。\n\n"
+            "テーマ:\n"
+            f"{topic}"
+        )
 
     def _extract_topic(self, task) -> str:
         input_data = getattr(task, "input_data", {}) or {}
@@ -83,13 +91,22 @@ class WriterRole(DefaultEmployeeRole):
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
         if self.provider is not None:
-            return self.provider.generate(
-                f"次のテーマについてYouTubeショート用の台本を書いてください: {topic}"
-            )
+            return self.provider.generate(self._build_prompt(topic))
         return f"Script draft for: {topic}"
 
     def finalize(self, result):
         return result
+
+    def _build_prompt(self, topic: str) -> str:
+        return (
+            "あなたはYouTubeショート動画の台本作家です。\n"
+            "以下のリサーチ結果をもとに、60秒以内の日本語ショート動画台本を"
+            "書いてください。\n"
+            "構成は「冒頭の引き → 本編3点 → まとめ」です。\n"
+            "ナレーションで読み上げやすい自然な文章にしてください。\n\n"
+            "リサーチ結果:\n"
+            f"{topic}"
+        )
 
     def _extract_topic(self, task) -> str:
         input_data = getattr(task, "input_data", {}) or {}
@@ -120,13 +137,25 @@ class ReviewerRole(DefaultEmployeeRole):
     def execute(self, task):
         topic = self.topic or self._extract_topic(task)
         if self.provider is not None:
-            return self.provider.generate(
-                f"次の成果物をレビューしてください: {topic}"
-            )
+            return self.provider.generate(self._build_prompt(topic))
         return f"Review result: approved for {topic}"
 
     def finalize(self, result):
         return result
+
+    def _build_prompt(self, topic: str) -> str:
+        return (
+            "あなたはYouTubeショート動画の編集長です。\n"
+            "以下の台本を日本語でレビューしてください。\n\n"
+            "評価項目:\n"
+            "- 冒頭に引きがあるか\n"
+            "- 60秒以内に収まりそうか\n"
+            "- 内容が分かりやすいか\n"
+            "- 改善点\n\n"
+            "最後に必ず「合格」または「修正必要」を出してください。\n\n"
+            "台本:\n"
+            f"{topic}"
+        )
 
     def _extract_topic(self, task) -> str:
         input_data = getattr(task, "input_data", {}) or {}
