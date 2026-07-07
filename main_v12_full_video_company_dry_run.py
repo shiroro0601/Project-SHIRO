@@ -1,5 +1,6 @@
 from pprint import pprint
 
+from company.artifacts.script_artifact_parser import ScriptArtifactParser
 from company.core.employee_role import (
     EditorRole,
     ImageRole,
@@ -91,6 +92,7 @@ class FullAutoVideoPipeline:
         voice_generator=None,
         editor=None,
         publisher=None,
+        script_artifact_parser=None,
     ):
         text_provider = text_provider or DryRunTextProvider()
         self.researcher = researcher or ResearchRole(provider=text_provider)
@@ -100,6 +102,7 @@ class FullAutoVideoPipeline:
         self.voice_generator = voice_generator or DryRunVoiceGenerator()
         self.editor = editor or DryRunEditor()
         self.publisher = publisher or YouTubeStudioPublisher(dry_run=True)
+        self.script_artifact_parser = script_artifact_parser or ScriptArtifactParser()
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -109,27 +112,44 @@ class FullAutoVideoPipeline:
 
         execution_order.append("Writer")
         script_result = self.writer.execute(research_result)
+        script_artifact = self.script_artifact_parser.parse(script_result)
 
         execution_order.append("Reviewer")
         review_result = self.reviewer.execute(script_result)
 
-        media_task = create_task(
+        image_prompt_source = (
+            "\n".join(script_artifact.image_prompts)
+            if script_artifact.image_prompts
+            else script_result
+        )
+        image_task = create_task(
             topic,
-            f"{topic}の動画素材を制作してください。",
+            f"{topic}の画像素材を制作してください。",
+            {
+                "topic": image_prompt_source,
+                "script_result": script_result,
+                "script_artifact": script_artifact,
+                "review_result": review_result,
+            },
+        )
+        voice_task = create_task(
+            topic,
+            f"{topic}の音声素材を制作してください。",
             {
                 "script_result": script_result,
+                "script_artifact": script_artifact,
                 "review_result": review_result,
             },
         )
         image_path = run_role(
             ImageRole(generator=self.image_generator),
-            media_task,
+            image_task,
             "Image",
             execution_order,
         )
         voice_path = run_role(
             VoiceRole(generator=self.voice_generator),
-            media_task,
+            voice_task,
             "Voice",
             execution_order,
         )
@@ -169,6 +189,7 @@ class FullAutoVideoPipeline:
             "execution_order": execution_order,
             "research_result": research_result,
             "script_result": script_result,
+            "script_artifact": script_artifact,
             "review_result": review_result,
             "image_path": image_path,
             "voice_path": voice_path,

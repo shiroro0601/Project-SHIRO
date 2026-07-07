@@ -105,7 +105,7 @@ def test_full_video_company_dry_run_executes_image_and_voice(tmp_path):
 
     assert result["image_path"] == "fake_image.png"
     assert result["voice_path"] == "fake_voice.wav"
-    assert image_generator.prompts == ["Image prompt for: 猫の意外な雑学"]
+    assert image_generator.prompts == ["Image prompt for: fake script result"]
     assert voice_generator.texts == ["Voice script for: 猫の意外な雑学"]
 
 
