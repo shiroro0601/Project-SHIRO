@@ -1,4 +1,5 @@
 from company.artifacts.script_artifact import ScriptArtifact
+from company.artifacts.scene_artifact import SceneArtifact
 from company.publishers.youtube_studio_publisher import YouTubeStudioPublisher
 from main_v12_full_video_company_dry_run import FullAutoVideoPipeline
 
@@ -56,6 +57,14 @@ def test_pipeline_result_contains_script_artifact(tmp_path):
     assert isinstance(result["script_artifact"], ScriptArtifact)
     assert result["script_artifact"].title == "猫の意外な雑学"
     assert result["script_artifact"].narration == "猫は狭い場所が好きです。"
+    assert result["script_artifact"].scenes == [
+        SceneArtifact(
+            index=1,
+            narration="猫は狭い場所が好きです。",
+            image_prompt="猫が箱に入る",
+            duration_seconds=60.0,
+        )
+    ]
 
 
 def test_pipeline_keeps_script_result_compatibility(tmp_path):
@@ -65,6 +74,14 @@ def test_pipeline_keeps_script_result_compatibility(tmp_path):
 
     assert result["script_result"] == writer_output
     assert result["script_artifact"].raw_text == writer_output
+    assert result["script_artifact"].scenes == [
+        SceneArtifact(
+            index=1,
+            narration=writer_output,
+            image_prompt=writer_output,
+            duration_seconds=60.0,
+        )
+    ]
 
 
 def test_pipeline_uses_script_artifact_image_prompts_for_image_step(tmp_path):
@@ -83,6 +100,21 @@ def test_pipeline_uses_script_artifact_image_prompts_for_image_step(tmp_path):
         "猫が箱に入る",
         "猫のひげのクローズアップ",
     ]
-    assert image_generator.prompts == [
-        "Image prompt for: 猫が箱に入る\n猫のひげのクローズアップ"
-    ]
+    assert image_generator.prompts == ["Image prompt for: 猫が箱に入る"]
+
+
+def test_pipeline_uses_scene_image_prompt_before_image_prompts(tmp_path):
+    image_generator = RecordingImageGenerator()
+    writer_output = (
+        "【タイトル】\n猫の意外な雑学\n\n"
+        "【画像指示】\n旧形式の画像指示\n\n"
+        "【シーン1】\n"
+        "ナレーション: 猫は箱が好きです。\n"
+        "画像: シーン形式の猫画像\n"
+        "秒数: 5"
+    )
+
+    result = _pipeline(tmp_path, writer_output, image_generator).run("猫の意外な雑学")
+
+    assert result["script_artifact"].scenes[0].image_prompt == "シーン形式の猫画像"
+    assert image_generator.prompts == ["Image prompt for: シーン形式の猫画像"]

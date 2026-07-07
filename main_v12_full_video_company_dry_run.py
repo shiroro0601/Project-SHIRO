@@ -117,11 +117,12 @@ class FullAutoVideoPipeline:
         execution_order.append("Reviewer")
         review_result = self.reviewer.execute(script_result)
 
-        image_prompt_source = (
-            "\n".join(script_artifact.image_prompts)
-            if script_artifact.image_prompts
-            else script_result
-        )
+        if script_artifact.scenes:
+            image_prompt_source = script_artifact.scenes[0].image_prompt
+        elif script_artifact.image_prompts:
+            image_prompt_source = script_artifact.image_prompts[0]
+        else:
+            image_prompt_source = script_result
         image_task = create_task(
             topic,
             f"{topic}の画像素材を制作してください。",
