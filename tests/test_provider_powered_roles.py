@@ -66,6 +66,9 @@ def test_research_role_uses_provider_with_research_prompt():
     assert "5個" in prompt
     assert "雑学" in prompt
     assert "テーマ" in prompt
+    assert "テーマから逸脱してはいけません" in prompt
+    assert "別テーマを提案してはいけません" in prompt
+    assert "出力形式" in prompt
     assert "猫の意外な雑学" in prompt
 
 
@@ -84,6 +87,10 @@ def test_writer_role_uses_provider_with_writer_prompt():
     assert "冒頭の引き" in prompt
     assert "本編3点" in prompt
     assert "まとめ" in prompt
+    assert "リサーチ結果だけを材料" in prompt
+    assert "新しいテーマを作らない" in prompt
+    assert "無関係な話題に移らない" in prompt
+    assert "出力形式" in prompt
     assert "犬の行動心理" in prompt
 
 
@@ -101,6 +108,9 @@ def test_reviewer_role_uses_provider_with_reviewer_prompt():
     assert "合格" in prompt
     assert "修正必要" in prompt
     assert "改善点" in prompt
+    assert "以下の台本だけをレビュー" in prompt
+    assert "「内容がない」「不明」とは言わないでください" in prompt
+    assert "出力形式" in prompt
     assert "海の不思議" in prompt
 
 
