@@ -80,6 +80,103 @@ def create_publish_metadata(topic: str) -> dict:
     }
 
 
+class FullAutoVideoPipeline:
+    def __init__(
+        self,
+        researcher=None,
+        writer=None,
+        reviewer=None,
+        text_provider=None,
+        image_generator=None,
+        voice_generator=None,
+        editor=None,
+        publisher=None,
+    ):
+        text_provider = text_provider or DryRunTextProvider()
+        self.researcher = researcher or ResearchRole(provider=text_provider)
+        self.writer = writer or WriterRole(provider=text_provider)
+        self.reviewer = reviewer or ReviewerRole(provider=text_provider)
+        self.image_generator = image_generator or DryRunImageGenerator()
+        self.voice_generator = voice_generator or DryRunVoiceGenerator()
+        self.editor = editor or DryRunEditor()
+        self.publisher = publisher or YouTubeStudioPublisher(dry_run=True)
+
+    def run(self, topic: str):
+        execution_order: list[str] = []
+
+        execution_order.append("Researcher")
+        research_result = self.researcher.execute(topic)
+
+        execution_order.append("Writer")
+        script_result = self.writer.execute(research_result)
+
+        execution_order.append("Reviewer")
+        review_result = self.reviewer.execute(script_result)
+
+        media_task = create_task(
+            topic,
+            f"{topic}の動画素材を制作してください。",
+            {
+                "script_result": script_result,
+                "review_result": review_result,
+            },
+        )
+        image_path = run_role(
+            ImageRole(generator=self.image_generator),
+            media_task,
+            "Image",
+            execution_order,
+        )
+        voice_path = run_role(
+            VoiceRole(generator=self.voice_generator),
+            media_task,
+            "Voice",
+            execution_order,
+        )
+
+        edit_task = create_task(
+            topic,
+            f"{topic}の動画を編集してください。",
+            {
+                "image_paths": [image_path],
+                "audio_paths": [voice_path],
+            },
+        )
+        video_path = run_role(
+            EditorRole(editor=VideoEditorAdapter(self.editor)),
+            edit_task,
+            "Editor",
+            execution_order,
+        )
+
+        publish_task = create_task(
+            topic,
+            f"{topic}のYouTube投稿を準備してください。",
+            {
+                "video_path": video_path,
+                "metadata": create_publish_metadata(topic),
+            },
+        )
+        publish_result = run_role(
+            PublisherRole(publisher=self.publisher),
+            publish_task,
+            "Publisher",
+            execution_order,
+        )
+
+        return {
+            "topic": topic,
+            "execution_order": execution_order,
+            "research_result": research_result,
+            "script_result": script_result,
+            "review_result": review_result,
+            "image_path": image_path,
+            "voice_path": voice_path,
+            "video_path": video_path,
+            "publish_result": publish_result,
+        }
+
+
 def run_demo(
     topic: str = "猫の意外な雑学",
     text_provider=None,
@@ -88,110 +185,14 @@ def run_demo(
     editor=None,
     publisher=None,
 ):
-    text_provider = text_provider or DryRunTextProvider()
-    image_generator = image_generator or DryRunImageGenerator()
-    voice_generator = voice_generator or DryRunVoiceGenerator()
-    editor = editor or DryRunEditor()
-    publisher = publisher or YouTubeStudioPublisher(dry_run=True)
-    execution_order: list[str] = []
-
-    research_task = create_task(topic, f"{topic}について調査してください。")
-    research_result = run_role(
-        ResearchRole(provider=text_provider),
-        research_task,
-        "Researcher",
-        execution_order,
+    pipeline = FullAutoVideoPipeline(
+        text_provider=text_provider,
+        image_generator=image_generator,
+        voice_generator=voice_generator,
+        editor=editor,
+        publisher=publisher,
     )
-
-    script_task = create_task(
-        topic,
-        f"{topic}について台本を書いてください。",
-        {"research_result": research_result},
-    )
-    script_result = run_role(
-        WriterRole(provider=text_provider),
-        script_task,
-        "Writer",
-        execution_order,
-    )
-
-    review_task = create_task(
-        topic,
-        f"{topic}の台本をレビューしてください。",
-        {
-            "research_result": research_result,
-            "script_result": script_result,
-        },
-    )
-    review_result = run_role(
-        ReviewerRole(provider=text_provider),
-        review_task,
-        "Reviewer",
-        execution_order,
-    )
-
-    media_task = create_task(
-        topic,
-        f"{topic}の動画素材を制作してください。",
-        {
-            "script_result": script_result,
-            "review_result": review_result,
-        },
-    )
-    image_path = run_role(
-        ImageRole(generator=image_generator),
-        media_task,
-        "Image",
-        execution_order,
-    )
-    voice_path = run_role(
-        VoiceRole(generator=voice_generator),
-        media_task,
-        "Voice",
-        execution_order,
-    )
-
-    edit_task = create_task(
-        topic,
-        f"{topic}の動画を編集してください。",
-        {
-            "image_paths": [image_path],
-            "audio_paths": [voice_path],
-        },
-    )
-    video_path = run_role(
-        EditorRole(editor=VideoEditorAdapter(editor)),
-        edit_task,
-        "Editor",
-        execution_order,
-    )
-
-    publish_task = create_task(
-        topic,
-        f"{topic}のYouTube投稿を準備してください。",
-        {
-            "video_path": video_path,
-            "metadata": create_publish_metadata(topic),
-        },
-    )
-    publish_result = run_role(
-        PublisherRole(publisher=publisher),
-        publish_task,
-        "Publisher",
-        execution_order,
-    )
-
-    return {
-        "topic": topic,
-        "execution_order": execution_order,
-        "research_result": research_result,
-        "script_result": script_result,
-        "review_result": review_result,
-        "image_path": image_path,
-        "voice_path": voice_path,
-        "video_path": video_path,
-        "publish_result": publish_result,
-    }
+    return pipeline.run(topic)
 
 
 def main() -> None:
