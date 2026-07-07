@@ -100,7 +100,7 @@ def test_pipeline_uses_script_artifact_image_prompts_for_image_step(tmp_path):
         "猫が箱に入る",
         "猫のひげのクローズアップ",
     ]
-    assert image_generator.prompts == ["Image prompt for: 猫が箱に入る"]
+    assert image_generator.prompts == ["猫が箱に入る"]
 
 
 def test_pipeline_uses_scene_image_prompt_before_image_prompts(tmp_path):
@@ -117,4 +117,4 @@ def test_pipeline_uses_scene_image_prompt_before_image_prompts(tmp_path):
     result = _pipeline(tmp_path, writer_output, image_generator).run("猫の意外な雑学")
 
     assert result["script_artifact"].scenes[0].image_prompt == "シーン形式の猫画像"
-    assert image_generator.prompts == ["Image prompt for: シーン形式の猫画像"]
+    assert image_generator.prompts == ["シーン形式の猫画像"]

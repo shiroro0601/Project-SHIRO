@@ -1,5 +1,6 @@
 from pprint import pprint
 
+from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
 from company.core.employee_role import (
     EditorRole,
@@ -117,43 +118,31 @@ class FullAutoVideoPipeline:
         execution_order.append("Reviewer")
         review_result = self.reviewer.execute(script_result)
 
-        if script_artifact.scenes:
-            image_prompt_source = script_artifact.scenes[0].image_prompt
+        scene_assets = self._generate_scene_assets(script_artifact, execution_order)
+
+        if scene_assets:
+            image_path = scene_assets[0].image_path
+            voice_path = scene_assets[0].voice_path
         elif script_artifact.image_prompts:
             image_prompt_source = script_artifact.image_prompts[0]
+            image_path, voice_path = self._generate_single_assets(
+                topic=topic,
+                image_prompt_source=image_prompt_source,
+                script_result=script_result,
+                script_artifact=script_artifact,
+                review_result=review_result,
+                execution_order=execution_order,
+            )
         else:
             image_prompt_source = script_result
-        image_task = create_task(
-            topic,
-            f"{topic}の画像素材を制作してください。",
-            {
-                "topic": image_prompt_source,
-                "script_result": script_result,
-                "script_artifact": script_artifact,
-                "review_result": review_result,
-            },
-        )
-        voice_task = create_task(
-            topic,
-            f"{topic}の音声素材を制作してください。",
-            {
-                "script_result": script_result,
-                "script_artifact": script_artifact,
-                "review_result": review_result,
-            },
-        )
-        image_path = run_role(
-            ImageRole(generator=self.image_generator),
-            image_task,
-            "Image",
-            execution_order,
-        )
-        voice_path = run_role(
-            VoiceRole(generator=self.voice_generator),
-            voice_task,
-            "Voice",
-            execution_order,
-        )
+            image_path, voice_path = self._generate_single_assets(
+                topic=topic,
+                image_prompt_source=image_prompt_source,
+                script_result=script_result,
+                script_artifact=script_artifact,
+                review_result=review_result,
+                execution_order=execution_order,
+            )
 
         edit_task = create_task(
             topic,
@@ -191,12 +180,74 @@ class FullAutoVideoPipeline:
             "research_result": research_result,
             "script_result": script_result,
             "script_artifact": script_artifact,
+            "scene_assets": scene_assets,
             "review_result": review_result,
             "image_path": image_path,
             "voice_path": voice_path,
             "video_path": video_path,
             "publish_result": publish_result,
         }
+
+    def _generate_scene_assets(self, script_artifact, execution_order: list[str]):
+        scene_assets = []
+        if script_artifact.scenes:
+            execution_order.extend(["Image", "Voice"])
+        for scene in script_artifact.scenes:
+            image_path = self.image_generator.generate(scene.image_prompt)
+            voice_path = self.voice_generator.generate(scene.narration)
+            scene_assets.append(
+                SceneAsset(
+                    scene_index=scene.index,
+                    image_path=image_path,
+                    voice_path=voice_path,
+                    narration=scene.narration,
+                    image_prompt=scene.image_prompt,
+                    duration_seconds=scene.duration_seconds,
+                )
+            )
+        return scene_assets
+
+    def _generate_single_assets(
+        self,
+        topic: str,
+        image_prompt_source: str,
+        script_result: str,
+        script_artifact,
+        review_result: str,
+        execution_order: list[str],
+    ):
+        image_task = create_task(
+            topic,
+            f"{topic}の画像素材を制作してください。",
+            {
+                "topic": image_prompt_source,
+                "script_result": script_result,
+                "script_artifact": script_artifact,
+                "review_result": review_result,
+            },
+        )
+        voice_task = create_task(
+            topic,
+            f"{topic}の音声素材を制作してください。",
+            {
+                "script_result": script_result,
+                "script_artifact": script_artifact,
+                "review_result": review_result,
+            },
+        )
+        image_path = run_role(
+            ImageRole(generator=self.image_generator),
+            image_task,
+            "Image",
+            execution_order,
+        )
+        voice_path = run_role(
+            VoiceRole(generator=self.voice_generator),
+            voice_task,
+            "Voice",
+            execution_order,
+        )
+        return image_path, voice_path
 
 
 def run_demo(
