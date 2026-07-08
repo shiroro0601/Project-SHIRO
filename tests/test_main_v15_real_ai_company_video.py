@@ -1,0 +1,116 @@
+import main_v15_real_ai_company_video as main_v15
+
+
+class FakeProvider:
+    def __init__(self):
+        self.prompts = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        if "リサーチャー" in prompt:
+            return "猫は狭い場所に入る習性があります。"
+        if "台本作家" in prompt:
+            return (
+                "【タイトル】\n"
+                "猫の意外な雑学\n\n"
+                "【シーン1】\n"
+                "ナレーション: 猫は液体のように狭い場所へ入ります。\n"
+                "画像: 箱に入る猫\n"
+                "秒数: 3\n\n"
+                "【シーン2】\n"
+                "ナレーション: 猫のひげは通れる幅を測るセンサーです。\n"
+                "画像: ひげが見える猫のアップ\n"
+                "秒数: 4\n"
+            )
+        if "編集長" in prompt:
+            return "【評価】\n分かりやすい台本です。\n\n【改善点】\nなし\n\n【判定】\n合格"
+        return "unknown"
+
+
+class FakeImageGenerator:
+    def __init__(self):
+        self.prompts = []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        return f"fake_image_{len(self.prompts)}.png"
+
+
+class FakeVoiceGenerator:
+    def __init__(self):
+        self.texts = []
+
+    def generate(self, text: str) -> str:
+        self.texts.append(text)
+        return f"fake_voice_{len(self.texts)}.wav"
+
+
+class FakeSceneVideoComposer:
+    def __init__(self):
+        self.scene_assets = []
+        self.output_path = None
+
+    def compose(self, scene_assets, output_path: str) -> str:
+        self.scene_assets = scene_assets
+        self.output_path = output_path
+        return "fake_final_video.mp4"
+
+
+class FakePublisher:
+    def generate(self, task):
+        return {
+            "status": "dry_run",
+            "video_path": task.input_data["video_path"],
+            "title": task.input_data["metadata"]["title"],
+        }
+
+
+def test_main_v15_importable():
+    assert main_v15.DEFAULT_TOPIC == "猫の意外な雑学"
+
+
+def test_build_company_accepts_dependency_injection():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+    )
+
+    assert company is not None
+
+
+def test_run_real_ai_company_video_with_fakes():
+    provider = FakeProvider()
+    image_generator = FakeImageGenerator()
+    voice_generator = FakeVoiceGenerator()
+    composer = FakeSceneVideoComposer()
+
+    result = main_v15.run_real_ai_company_video(
+        topic="猫の意外な雑学",
+        provider=provider,
+        image_generator=image_generator,
+        voice_generator=voice_generator,
+        scene_video_composer=composer,
+        publisher=FakePublisher(),
+    )
+
+    assert result["topic"] == "猫の意外な雑学"
+    assert "research_result" in result
+    assert "script_result" in result
+    assert "review_result" in result
+    assert result["script_artifact"].title == "猫の意外な雑学"
+    assert len(result["scene_assets"]) == 2
+    assert image_generator.prompts == [
+        "箱に入る猫",
+        "ひげが見える猫のアップ",
+    ]
+    assert voice_generator.texts == [
+        "猫は液体のように狭い場所へ入ります。",
+        "猫のひげは通れる幅を測るセンサーです。",
+    ]
+    assert composer.scene_assets == result["scene_assets"]
+    assert result["scene_video_path"] == "fake_final_video.mp4"
+    assert result["video_path"] == "fake_final_video.mp4"
+    assert result["publish_result"]["status"] == "dry_run"
