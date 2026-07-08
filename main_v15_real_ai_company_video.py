@@ -1,3 +1,4 @@
+import argparse
 import base64
 import sys
 import wave
@@ -62,24 +63,55 @@ def configure_stdout() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
 
 
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Run Project SHIRO real AI company video integration.",
+    )
+    parser.add_argument(
+        "--real-media",
+        action="store_true",
+        help="Use StableDiffusionGenerator and VOICEVOXGenerator instead of placeholders.",
+    )
+    return parser.parse_args(argv)
+
+
+def create_media_generators(real_media: bool):
+    if real_media:
+        from company.generators.stable_diffusion_generator import (
+            StableDiffusionGenerator,
+        )
+        from company.generators.voicevox_generator import VOICEVOXGenerator
+
+        return StableDiffusionGenerator(), VOICEVOXGenerator()
+
+    return PlaceholderImageGenerator(), PlaceholderVoiceGenerator()
+
+
 def build_company(
     provider=None,
     image_generator=None,
     voice_generator=None,
     scene_video_composer=None,
     publisher=None,
+    real_media: bool = False,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider)
     writer = WriterRole(provider=provider)
     reviewer = ReviewerRole(provider=provider)
+    if image_generator is None or voice_generator is None:
+        default_image_generator, default_voice_generator = create_media_generators(
+            real_media
+        )
+        image_generator = image_generator or default_image_generator
+        voice_generator = voice_generator or default_voice_generator
 
     return FullAutoVideoPipeline(
         researcher=researcher,
         writer=writer,
         reviewer=reviewer,
-        image_generator=image_generator or PlaceholderImageGenerator(),
-        voice_generator=voice_generator or PlaceholderVoiceGenerator(),
+        image_generator=image_generator,
+        voice_generator=voice_generator,
         scene_video_composer=scene_video_composer or MoviePySceneVideoComposer(),
         publisher=publisher,
     )
@@ -92,6 +124,7 @@ def run_real_ai_company_video(
     voice_generator=None,
     scene_video_composer=None,
     publisher=None,
+    real_media: bool = False,
 ):
     company = build_company(
         provider=provider,
@@ -99,6 +132,7 @@ def run_real_ai_company_video(
         voice_generator=voice_generator,
         scene_video_composer=scene_video_composer,
         publisher=publisher,
+        real_media=real_media,
     )
     return company.run(topic)
 
@@ -141,14 +175,31 @@ def print_result(result: dict) -> None:
     pprint(result.get("publish_result"))
 
 
-def main() -> None:
+def _print_runtime_hint(exc: RuntimeError) -> None:
+    message = str(exc)
+    if "OllamaProvider request failed" in message:
+        print("Ollamaに接続できません。")
+        print("別PowerShellで `ollama serve` を実行してください。")
+    elif "StableDiffusionGenerator request failed" in message:
+        print("Stable Diffusion WebUI APIに接続できません。")
+        print("AUTOMATIC1111 WebUIを `--api` 付きで起動してください。")
+    elif "VOICEVOXGenerator request failed" in message:
+        print("VOICEVOX Engineに接続できません。")
+        print("VOICEVOX Engineを起動してください。")
+
+
+def main(argv=None) -> None:
     configure_stdout()
+    args = parse_args(argv)
+    mode = "real media" if args.real_media else "placeholder"
+    print(f"media mode: {mode}")
     try:
-        result = run_real_ai_company_video(DEFAULT_TOPIC)
+        result = run_real_ai_company_video(
+            DEFAULT_TOPIC,
+            real_media=args.real_media,
+        )
     except RuntimeError as exc:
-        if "OllamaProvider request failed" in str(exc):
-            print("Ollamaに接続できません。")
-            print("別PowerShellで `ollama serve` を実行してください。")
+        _print_runtime_hint(exc)
         raise
 
     print_result(result)
