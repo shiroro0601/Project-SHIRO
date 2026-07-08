@@ -81,6 +81,38 @@ def test_build_company_accepts_dependency_injection():
     assert company is not None
 
 
+def test_parse_args_defaults_to_placeholder_mode():
+    args = main_v15.parse_args([])
+
+    assert args.real_media is False
+
+
+def test_parse_args_accepts_real_media_mode():
+    args = main_v15.parse_args(["--real-media"])
+
+    assert args.real_media is True
+
+
+def test_create_media_generators_defaults_to_placeholder_mode():
+    image_generator, voice_generator = main_v15.create_media_generators(False)
+
+    assert isinstance(image_generator, main_v15.PlaceholderImageGenerator)
+    assert isinstance(voice_generator, main_v15.PlaceholderVoiceGenerator)
+
+
+def test_build_company_real_media_with_fakes_does_not_require_external_services():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        real_media=True,
+    )
+
+    assert company is not None
+
+
 def test_run_real_ai_company_video_with_fakes():
     provider = FakeProvider()
     image_generator = FakeImageGenerator()
@@ -94,6 +126,7 @@ def test_run_real_ai_company_video_with_fakes():
         voice_generator=voice_generator,
         scene_video_composer=composer,
         publisher=FakePublisher(),
+        real_media=True,
     )
 
     assert result["topic"] == "猫の意外な雑学"
