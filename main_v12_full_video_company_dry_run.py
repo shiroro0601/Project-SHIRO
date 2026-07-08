@@ -94,6 +94,7 @@ class FullAutoVideoPipeline:
         editor=None,
         publisher=None,
         script_artifact_parser=None,
+        scene_video_composer=None,
     ):
         text_provider = text_provider or DryRunTextProvider()
         self.researcher = researcher or ResearchRole(provider=text_provider)
@@ -104,6 +105,7 @@ class FullAutoVideoPipeline:
         self.editor = editor or DryRunEditor()
         self.publisher = publisher or YouTubeStudioPublisher(dry_run=True)
         self.script_artifact_parser = script_artifact_parser or ScriptArtifactParser()
+        self.scene_video_composer = scene_video_composer
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -144,20 +146,29 @@ class FullAutoVideoPipeline:
                 execution_order=execution_order,
             )
 
-        edit_task = create_task(
-            topic,
-            f"{topic}の動画を編集してください。",
-            {
-                "image_paths": [image_path],
-                "audio_paths": [voice_path],
-            },
-        )
-        video_path = run_role(
-            EditorRole(editor=VideoEditorAdapter(self.editor)),
-            edit_task,
-            "Editor",
-            execution_order,
-        )
+        scene_video_path = None
+        if scene_assets and self.scene_video_composer is not None:
+            execution_order.append("Editor")
+            scene_video_path = self.scene_video_composer.compose(
+                scene_assets,
+                output_path="outputs/videos/final_video.mp4",
+            )
+            video_path = scene_video_path
+        else:
+            edit_task = create_task(
+                topic,
+                f"{topic}の動画を編集してください。",
+                {
+                    "image_paths": [image_path],
+                    "audio_paths": [voice_path],
+                },
+            )
+            video_path = run_role(
+                EditorRole(editor=VideoEditorAdapter(self.editor)),
+                edit_task,
+                "Editor",
+                execution_order,
+            )
 
         publish_task = create_task(
             topic,
@@ -184,6 +195,7 @@ class FullAutoVideoPipeline:
             "review_result": review_result,
             "image_path": image_path,
             "voice_path": voice_path,
+            "scene_video_path": scene_video_path,
             "video_path": video_path,
             "publish_result": publish_result,
         }
