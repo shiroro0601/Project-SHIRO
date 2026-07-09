@@ -7,6 +7,7 @@ from pprint import pprint
 
 from company.brain.provider import OllamaProvider
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
+from company.reports.run_report import RunReportWriter, build_run_report
 from company.runtime.service_health import ServiceHealthChecker
 from company.video.scene_video_composer import MoviePySceneVideoComposer
 from main_v12_full_video_company_dry_run import FullAutoVideoPipeline
@@ -77,6 +78,11 @@ def parse_args(argv=None):
         "--check-services",
         action="store_true",
         help="Check local Ollama, Stable Diffusion, and VOICEVOX service health.",
+    )
+    parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Skip writing the JSON run report.",
     )
     return parser.parse_args(argv)
 
@@ -181,6 +187,22 @@ def print_result(result: dict) -> None:
     pprint(result.get("publish_result"))
 
 
+def write_run_report(
+    result: dict,
+    media_mode: str,
+    report_writer=None,
+    status: str = "completed",
+) -> str:
+    writer = report_writer or RunReportWriter()
+    report = build_run_report(
+        topic=str(result.get("topic", DEFAULT_TOPIC)),
+        media_mode=media_mode,
+        result=result,
+        status=status,
+    )
+    return writer.write(report)
+
+
 def print_service_statuses(statuses) -> None:
     print("Project SHIRO Service Health Check")
     print("=" * 36)
@@ -214,7 +236,7 @@ def _print_runtime_hint(exc: RuntimeError) -> None:
         print("VOICEVOX Engineを起動してください。")
 
 
-def main(argv=None, service_health_checker=None) -> None:
+def main(argv=None, service_health_checker=None, report_writer=None) -> None:
     configure_stdout()
     args = parse_args(argv)
     if args.check_services:
@@ -236,6 +258,14 @@ def main(argv=None, service_health_checker=None) -> None:
         raise
 
     print_result(result)
+    if not args.no_report:
+        report_path = write_run_report(
+            result,
+            media_mode=mode,
+            report_writer=report_writer,
+        )
+        print()
+        print(f"Run report: {report_path}")
 
 
 if __name__ == "__main__":

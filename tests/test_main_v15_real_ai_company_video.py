@@ -79,6 +79,15 @@ class FakeServiceHealthChecker:
         return self.statuses
 
 
+class FakeReportWriter:
+    def __init__(self):
+        self.reports = []
+
+    def write(self, report):
+        self.reports.append(report)
+        return "outputs/reports/fake_report.json"
+
+
 def ok_statuses():
     return [
         ServiceStatus("Ollama", True, "ollama-url", "ok"),
@@ -127,6 +136,12 @@ def test_parse_args_accepts_check_services_mode():
     args = main_v15.parse_args(["--check-services"])
 
     assert args.check_services is True
+
+
+def test_parse_args_accepts_no_report_mode():
+    args = main_v15.parse_args(["--no-report"])
+
+    assert args.no_report is True
 
 
 def test_create_media_generators_defaults_to_placeholder_mode():
@@ -195,6 +210,69 @@ def test_check_services_mode_does_not_run_company(capsys):
     assert "Project SHIRO Service Health Check" in captured.out
     assert "[OK] Ollama" in captured.out
     assert "media mode:" not in captured.out
+
+
+def test_main_writes_report_by_default(monkeypatch, capsys):
+    report_writer = FakeReportWriter()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main([], report_writer=report_writer)
+
+    captured = capsys.readouterr()
+    assert len(report_writer.reports) == 1
+    assert report_writer.reports[0].topic == main_v15.DEFAULT_TOPIC
+    assert "Run report: outputs/reports/fake_report.json" in captured.out
+
+
+def test_main_no_report_skips_report_writer(monkeypatch, capsys):
+    report_writer = FakeReportWriter()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--no-report"], report_writer=report_writer)
+
+    captured = capsys.readouterr()
+    assert report_writer.reports == []
+    assert "Run report:" not in captured.out
 
 
 def test_real_media_checks_services_before_running(monkeypatch):
