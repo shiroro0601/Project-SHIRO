@@ -88,6 +88,19 @@ class FakeReportWriter:
         return "outputs/reports/fake_report.json"
 
 
+class FakeMemory:
+    def __init__(self):
+        self.data = {"jobs": []}
+        self.saved_data = []
+
+    def load(self):
+        return self.data
+
+    def save(self, data):
+        self.saved_data.append(data)
+        self.data = data
+
+
 def ok_statuses():
     return [
         ServiceStatus("Ollama", True, "ollama-url", "ok"),
@@ -142,6 +155,12 @@ def test_parse_args_accepts_no_report_mode():
     args = main_v15.parse_args(["--no-report"])
 
     assert args.no_report is True
+
+
+def test_parse_args_accepts_save_memory_mode():
+    args = main_v15.parse_args(["--save-memory"])
+
+    assert args.save_memory is True
 
 
 def test_create_media_generators_defaults_to_placeholder_mode():
@@ -273,6 +292,106 @@ def test_main_no_report_skips_report_writer(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert report_writer.reports == []
     assert "Run report:" not in captured.out
+
+
+def test_main_save_memory_saves_memory_record(monkeypatch, capsys):
+    memory = FakeMemory()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--save-memory"], memory=memory)
+
+    captured = capsys.readouterr()
+    assert len(memory.saved_data) == 1
+    assert memory.data["run_reports"][0]["type"] == "real_ai_company_run"
+    assert memory.data["run_reports"][0]["topic"] == main_v15.DEFAULT_TOPIC
+    assert "Memory saved: real_ai_company_run" in captured.out
+
+
+def test_main_without_save_memory_does_not_touch_memory(monkeypatch):
+    memory = FakeMemory()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--no-report"], memory=memory)
+
+    assert memory.saved_data == []
+
+
+def test_main_no_report_and_save_memory_still_saves_memory(monkeypatch, capsys):
+    memory = FakeMemory()
+    report_writer = FakeReportWriter()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        ["--no-report", "--save-memory"],
+        report_writer=report_writer,
+        memory=memory,
+    )
+
+    captured = capsys.readouterr()
+    assert report_writer.reports == []
+    assert len(memory.saved_data) == 1
+    assert "Run report:" not in captured.out
+    assert "Memory saved: real_ai_company_run" in captured.out
 
 
 def test_real_media_checks_services_before_running(monkeypatch):

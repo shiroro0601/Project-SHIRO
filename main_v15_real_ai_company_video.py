@@ -7,7 +7,9 @@ from pprint import pprint
 
 from company.brain.provider import OllamaProvider
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
+from company.memory.company_memory import CompanyMemory
 from company.reports.run_report import RunReportWriter, build_run_report
+from company.reports.run_report_memory_adapter import RunReportMemoryAdapter
 from company.runtime.service_health import ServiceHealthChecker
 from company.video.scene_video_composer import MoviePySceneVideoComposer
 from main_v12_full_video_company_dry_run import FullAutoVideoPipeline
@@ -83,6 +85,11 @@ def parse_args(argv=None):
         "--no-report",
         action="store_true",
         help="Skip writing the JSON run report.",
+    )
+    parser.add_argument(
+        "--save-memory",
+        action="store_true",
+        help="Save a compact run report record to CompanyMemory.",
     )
     return parser.parse_args(argv)
 
@@ -188,19 +195,27 @@ def print_result(result: dict) -> None:
 
 
 def write_run_report(
-    result: dict,
-    media_mode: str,
+    report,
     report_writer=None,
-    status: str = "completed",
 ) -> str:
     writer = report_writer or RunReportWriter()
-    report = build_run_report(
-        topic=str(result.get("topic", DEFAULT_TOPIC)),
-        media_mode=media_mode,
-        result=result,
-        status=status,
-    )
     return writer.write(report)
+
+
+def save_run_report_to_memory(report, memory=None, adapter=None) -> dict:
+    memory = memory or CompanyMemory()
+    adapter = adapter or RunReportMemoryAdapter()
+    record = adapter.to_memory_record(report)
+
+    if hasattr(memory, "add_run_report"):
+        memory.add_run_report(record)
+        return record
+
+    data = memory.load()
+    data.setdefault("run_reports", [])
+    data["run_reports"].append(record)
+    memory.save(data)
+    return record
 
 
 def print_service_statuses(statuses) -> None:
@@ -236,7 +251,13 @@ def _print_runtime_hint(exc: RuntimeError) -> None:
         print("VOICEVOX Engineを起動してください。")
 
 
-def main(argv=None, service_health_checker=None, report_writer=None) -> None:
+def main(
+    argv=None,
+    service_health_checker=None,
+    report_writer=None,
+    memory=None,
+    memory_adapter=None,
+) -> None:
     configure_stdout()
     args = parse_args(argv)
     if args.check_services:
@@ -258,14 +279,23 @@ def main(argv=None, service_health_checker=None, report_writer=None) -> None:
         raise
 
     print_result(result)
+    report = build_run_report(
+        topic=str(result.get("topic", DEFAULT_TOPIC)),
+        media_mode=mode,
+        result=result,
+        status="completed",
+    )
     if not args.no_report:
-        report_path = write_run_report(
-            result,
-            media_mode=mode,
-            report_writer=report_writer,
-        )
+        report_path = write_run_report(report, report_writer=report_writer)
         print()
         print(f"Run report: {report_path}")
+    if args.save_memory:
+        memory_record = save_run_report_to_memory(
+            report,
+            memory=memory,
+            adapter=memory_adapter,
+        )
+        print(f"Memory saved: {memory_record['type']}")
 
 
 if __name__ == "__main__":
