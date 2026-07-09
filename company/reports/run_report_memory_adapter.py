@@ -5,6 +5,16 @@ class RunReportMemoryAdapter:
     def to_memory_record(self, report: RunReport) -> dict:
         scene_count = len(report.scenes)
         asset_count = len(report.assets)
+        quality_feedback = getattr(report, "quality_feedback", {}) or {}
+        quality_decision = quality_feedback.get("decision", "")
+        quality_score = quality_feedback.get("score", 0.5)
+        improvement_points = quality_feedback.get("improvement_points", "")
+        summary = (
+            f"{report.topic} を {report.media_mode} mode で制作し、"
+            f"{scene_count} scenes / {asset_count} assets を生成しました。"
+        )
+        if quality_decision:
+            summary += f"品質判定: {quality_decision}。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -16,8 +26,8 @@ class RunReportMemoryAdapter:
             "asset_count": asset_count,
             "video_path": report.video_path,
             "scene_video_path": report.scene_video_path,
-            "summary": (
-                f"{report.topic} を {report.media_mode} mode で制作し、"
-                f"{scene_count} scenes / {asset_count} assets を生成しました。"
-            ),
+            "quality_decision": quality_decision,
+            "quality_score": quality_score,
+            "improvement_points": improvement_points,
+            "summary": summary,
         }
