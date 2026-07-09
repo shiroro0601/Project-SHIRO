@@ -7,6 +7,7 @@ from pprint import pprint
 
 from company.brain.provider import OllamaProvider
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
+from company.runtime.service_health import ServiceHealthChecker
 from company.video.scene_video_composer import MoviePySceneVideoComposer
 from main_v12_full_video_company_dry_run import FullAutoVideoPipeline
 
@@ -71,6 +72,11 @@ def parse_args(argv=None):
         "--real-media",
         action="store_true",
         help="Use StableDiffusionGenerator and VOICEVOXGenerator instead of placeholders.",
+    )
+    parser.add_argument(
+        "--check-services",
+        action="store_true",
+        help="Check local Ollama, Stable Diffusion, and VOICEVOX service health.",
     )
     return parser.parse_args(argv)
 
@@ -175,6 +181,26 @@ def print_result(result: dict) -> None:
     pprint(result.get("publish_result"))
 
 
+def print_service_statuses(statuses) -> None:
+    print("Project SHIRO Service Health Check")
+    print("=" * 36)
+    for status in statuses:
+        mark = "OK" if status.ok else "NG"
+        print(f"[{mark}] {status.name}")
+        print(f"  url: {status.url}")
+        print(f"  message: {status.message}")
+
+
+def ensure_services_ready(service_health_checker=None) -> None:
+    checker = service_health_checker or ServiceHealthChecker()
+    statuses = checker.check_all()
+    print_service_statuses(statuses)
+    failed = [status for status in statuses if not status.ok]
+    if failed:
+        names = ", ".join(status.name for status in failed)
+        raise RuntimeError(f"Required local services are not ready: {names}")
+
+
 def _print_runtime_hint(exc: RuntimeError) -> None:
     message = str(exc)
     if "OllamaProvider request failed" in message:
@@ -188,12 +214,19 @@ def _print_runtime_hint(exc: RuntimeError) -> None:
         print("VOICEVOX Engineを起動してください。")
 
 
-def main(argv=None) -> None:
+def main(argv=None, service_health_checker=None) -> None:
     configure_stdout()
     args = parse_args(argv)
+    if args.check_services:
+        checker = service_health_checker or ServiceHealthChecker()
+        print_service_statuses(checker.check_all())
+        return
+
     mode = "real media" if args.real_media else "placeholder"
     print(f"media mode: {mode}")
     try:
+        if args.real_media:
+            ensure_services_ready(service_health_checker)
         result = run_real_ai_company_video(
             DEFAULT_TOPIC,
             real_media=args.real_media,
