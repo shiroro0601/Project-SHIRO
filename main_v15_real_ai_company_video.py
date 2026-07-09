@@ -97,6 +97,11 @@ def parse_args(argv=None):
         action="store_true",
         help="Load recent run reports from CompanyMemory before execution.",
     )
+    parser.add_argument(
+        "--memory-loop",
+        action="store_true",
+        help="Enable both --use-memory and --save-memory for loop verification.",
+    )
     return parser.parse_args(argv)
 
 
@@ -227,6 +232,15 @@ def save_run_report_to_memory(report, memory=None, adapter=None) -> dict:
     return record
 
 
+def count_run_reports(memory=None) -> int:
+    memory = memory or CompanyMemory()
+    data = memory.load() if hasattr(memory, "load") else getattr(memory, "data", {})
+    if not isinstance(data, dict):
+        return 0
+    run_reports = data.get("run_reports", [])
+    return len(run_reports) if isinstance(run_reports, list) else 0
+
+
 def load_memory_context(memory=None, memory_retriever=None, limit: int = 3):
     retriever = memory_retriever or MemoryRetriever(memory or CompanyMemory())
     return retriever.build_context(limit=limit)
@@ -235,6 +249,25 @@ def load_memory_context(memory=None, memory_retriever=None, limit: int = 3):
 def print_memory_context(memory_context) -> None:
     print("Memory context:")
     print(memory_context.to_prompt_text())
+
+
+def print_memory_loop_status(
+    before_count: int,
+    after_count: int,
+    using_memory_context: bool,
+    saved_memory: bool,
+    memory_record=None,
+) -> None:
+    print("Memory loop:")
+    print(f"- before run_reports: {before_count}")
+    print(f"- using memory context: {'yes' if using_memory_context else 'no'}")
+    print(f"- saved memory: {'yes' if saved_memory else 'no'}")
+    print(f"- after run_reports: {after_count}")
+    if memory_record:
+        print(f"- saved summary: {memory_record.get('summary', '')}")
+        print(f"- quality decision: {memory_record.get('quality_decision', '')}")
+        print(f"- quality score: {memory_record.get('quality_score', '')}")
+        print(f"- improvement points: {memory_record.get('improvement_points', '')}")
 
 
 def print_service_statuses(statuses) -> None:
@@ -280,6 +313,9 @@ def main(
 ) -> None:
     configure_stdout()
     args = parse_args(argv)
+    if args.memory_loop:
+        args.use_memory = True
+        args.save_memory = True
     if args.check_services:
         checker = service_health_checker or ServiceHealthChecker()
         print_service_statuses(checker.check_all())
@@ -287,6 +323,9 @@ def main(
 
     mode = "real media" if args.real_media else "placeholder"
     print(f"media mode: {mode}")
+    before_memory_count = count_run_reports(memory) if args.use_memory or args.save_memory else 0
+    after_memory_count = before_memory_count
+    memory_record = None
     memory_context = None
     if args.use_memory:
         memory_context = load_memory_context(
@@ -322,7 +361,15 @@ def main(
             memory=memory,
             adapter=memory_adapter,
         )
+        after_memory_count = count_run_reports(memory)
         print(f"Memory saved: {memory_record['type']}")
+        print_memory_loop_status(
+            before_count=before_memory_count,
+            after_count=after_memory_count,
+            using_memory_context=args.use_memory,
+            saved_memory=True,
+            memory_record=memory_record,
+        )
 
 
 if __name__ == "__main__":

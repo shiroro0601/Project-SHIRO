@@ -218,6 +218,25 @@ def test_parse_args_accepts_use_memory_mode():
     assert args.use_memory is True
 
 
+def test_parse_args_accepts_memory_loop_mode():
+    args = main_v15.parse_args(["--memory-loop"])
+
+    assert args.memory_loop is True
+
+
+def test_count_run_reports_returns_zero_without_run_reports():
+    memory = FakeMemory()
+
+    assert main_v15.count_run_reports(memory) == 0
+
+
+def test_count_run_reports_counts_existing_run_reports():
+    memory = FakeMemory()
+    memory.data["run_reports"] = [{"topic": "old1"}, {"topic": "old2"}]
+
+    assert main_v15.count_run_reports(memory) == 2
+
+
 def test_create_media_generators_defaults_to_placeholder_mode():
     image_generator, voice_generator = main_v15.create_media_generators(False)
 
@@ -537,6 +556,110 @@ def test_main_use_memory_and_save_memory_can_run_together(monkeypatch, capsys):
     assert len(memory.saved_data) == 1
     assert "Memory context:" in captured.out
     assert "Memory saved: real_ai_company_run" in captured.out
+
+
+def test_main_save_memory_prints_memory_loop_status(monkeypatch, capsys):
+    memory = FakeMemory()
+    memory.data["run_reports"] = [{"topic": "old"}]
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": (
+                "【評価】\n"
+                "分かりやすい台本です。\n\n"
+                "【改善点】\n"
+                "なし\n\n"
+                "【判定】\n"
+                "合格"
+            ),
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--save-memory", "--no-report"], memory=memory)
+
+    captured = capsys.readouterr()
+    assert "Memory loop:" in captured.out
+    assert "- before run_reports: 1" in captured.out
+    assert "- using memory context: no" in captured.out
+    assert "- saved memory: yes" in captured.out
+    assert "- after run_reports: 2" in captured.out
+    assert "- saved summary:" in captured.out
+    assert "- quality decision: 合格" in captured.out
+    assert "- quality score: 1.0" in captured.out
+
+
+def test_main_memory_loop_enables_use_memory_and_save_memory(monkeypatch, capsys):
+    memory = FakeMemory()
+    memory.data["run_reports"] = [{"topic": "old"}]
+    retriever = FakeMemoryRetriever()
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        memory_context=None,
+    ):
+        calls.append(memory_context)
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": (
+                "【評価】\n"
+                "分かりやすい台本です。\n\n"
+                "【改善点】\n"
+                "冒頭の引きを強くする\n\n"
+                "【判定】\n"
+                "合格"
+            ),
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        ["--memory-loop", "--no-report"],
+        memory=memory,
+        memory_retriever=retriever,
+    )
+
+    captured = capsys.readouterr()
+    assert retriever.build_context_calls == [3]
+    assert calls == [retriever.context]
+    assert len(memory.data["run_reports"]) == 2
+    assert "Run report:" not in captured.out
+    assert "Memory context:" in captured.out
+    assert "Memory saved: real_ai_company_run" in captured.out
+    assert "Memory loop:" in captured.out
+    assert "- before run_reports: 1" in captured.out
+    assert "- after run_reports: 2" in captured.out
+    assert "- quality decision: 合格" in captured.out
+    assert "- improvement points: 冒頭の引きを強くする" in captured.out
 
 
 def test_real_media_checks_services_before_running(monkeypatch):
