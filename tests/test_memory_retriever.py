@@ -32,7 +32,8 @@ def test_memory_retriever_returns_empty_context_without_run_reports():
 
     assert context.is_empty() is True
     assert context.records == []
-    assert context.to_prompt_text() == "過去の実行履歴はありません。"
+    assert "過去の実行履歴はありません。" in context.to_prompt_text()
+    assert "成功パターンはまだありません。" in context.to_prompt_text()
 
 
 def test_memory_retriever_gets_recent_run_reports_with_limit():
@@ -64,3 +65,6 @@ def test_memory_retriever_builds_prompt_text_newest_first():
     assert "1. topic: 新しいテーマ" in prompt_text
     assert "2. topic: 古いテーマ" in prompt_text
     assert "summary: 新しいテーマ を placeholder mode で制作しました。" in prompt_text
+    assert "成功パターン:" in prompt_text
+    assert "避けること:" in prompt_text
+    assert "今回意識すること:" in prompt_text

@@ -1,6 +1,7 @@
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
 from company.core.task import TaskType
 from company.core.task_factory import TaskFactory
+from company.memory.memory_context import MemoryContext
 
 
 class FakeProvider:
@@ -368,3 +369,52 @@ def test_memory_context_to_prompt_text_is_used():
     role.execute("猫は狭い場所に入る")
 
     assert "1. topic: object memory" in provider.prompts[0]
+
+
+def test_research_role_prompt_receives_quality_aware_memory_context():
+    provider = FakeProvider(response="research")
+    memory_context = MemoryContext(
+        records=[
+            {
+                "topic": "前回の猫動画",
+                "script_title": "猫タイトル",
+                "scene_count": 3,
+                "asset_count": 3,
+                "summary": "品質判定: 合格。",
+                "quality_decision": "合格",
+                "quality_score": 1.0,
+                "improvement_points": "冒頭の引きを強くする",
+            }
+        ]
+    )
+    role = ResearchRole(provider=provider, memory_context=memory_context)
+
+    role.execute("猫の意外な雑学")
+
+    prompt = provider.prompts[0]
+    assert "成功パターン:" in prompt
+    assert "今回意識すること:" in prompt
+    assert "冒頭の引きを強くする" in prompt
+
+
+def test_writer_role_prompt_receives_quality_aware_memory_context():
+    provider = FakeProvider(response="script")
+    memory_context = MemoryContext(
+        records=[
+            {
+                "topic": "前回の犬動画",
+                "summary": "品質判定: 修正必要。",
+                "quality_decision": "修正必要",
+                "quality_score": 0.0,
+                "improvement_points": "本編を3点に整理する",
+            }
+        ]
+    )
+    role = WriterRole(provider=provider, memory_context=memory_context)
+
+    role.execute("猫の調査結果")
+
+    prompt = provider.prompts[0]
+    assert "避けること:" in prompt
+    assert "今回意識すること:" in prompt
+    assert "本編を3点に整理する" in prompt
