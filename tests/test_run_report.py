@@ -31,6 +31,7 @@ def test_run_report_can_be_created():
 
     assert report.topic == "猫の意外な雑学"
     assert report.status == "completed"
+    assert report.quality_feedback == {}
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -60,6 +61,7 @@ def test_run_report_writer_saves_json_with_japanese(tmp_path):
     data = json.loads(saved_text)
     assert data["topic"] == "猫の意外な雑学"
     assert data["scene_video_path"] == "video.mp4"
+    assert data["quality_feedback"] == {}
 
 
 def test_build_run_report_converts_result_dict_to_report():
@@ -88,7 +90,14 @@ def test_build_run_report_converts_result_dict_to_report():
     result = {
         "research_result": "research",
         "script_result": "script",
-        "review_result": "review",
+        "review_result": (
+            "【評価】\n"
+            "分かりやすい台本です。\n\n"
+            "【改善点】\n"
+            "なし\n\n"
+            "【判定】\n"
+            "合格"
+        ),
         "script_artifact": script_artifact,
         "scene_assets": [scene_asset],
         "image_path": "image.png",
@@ -124,3 +133,9 @@ def test_build_run_report_converts_result_dict_to_report():
             "duration_seconds": 3.0,
         }
     ]
+    assert report.quality_feedback == {
+        "evaluation": "分かりやすい台本です。",
+        "improvement_points": "なし",
+        "decision": "合格",
+        "score": 1.0,
+    }

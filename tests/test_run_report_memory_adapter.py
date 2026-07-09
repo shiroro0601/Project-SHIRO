@@ -24,6 +24,12 @@ def make_report() -> RunReport:
         voice_path="voice_1.wav",
         video_path="final_video.mp4",
         scene_video_path="final_video.mp4",
+        quality_feedback={
+            "evaluation": "分かりやすい台本です。",
+            "improvement_points": "冒頭の引きを強くする",
+            "decision": "合格",
+            "score": 1.0,
+        },
     )
 
 
@@ -51,3 +57,12 @@ def test_run_report_memory_adapter_summary_contains_topic_and_media_mode():
     assert "猫の意外な雑学" in record["summary"]
     assert "placeholder mode" in record["summary"]
     assert "2 scenes / 2 assets" in record["summary"]
+    assert "品質判定: 合格" in record["summary"]
+
+
+def test_run_report_memory_adapter_adds_quality_fields():
+    record = RunReportMemoryAdapter().to_memory_record(make_report())
+
+    assert record["quality_decision"] == "合格"
+    assert record["quality_score"] == 1.0
+    assert record["improvement_points"] == "冒頭の引きを強くする"

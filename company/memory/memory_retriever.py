@@ -51,4 +51,14 @@ class MemoryRetriever:
                     f"   summary: {record.get('summary', '')}",
                 ]
             )
+            if "quality_decision" in record:
+                lines.append(
+                    f"   quality_decision: {record.get('quality_decision', '')}"
+                )
+            if "quality_score" in record:
+                lines.append(f"   quality_score: {record.get('quality_score', '')}")
+            if "improvement_points" in record:
+                lines.append(
+                    f"   improvement_points: {record.get('improvement_points', '')}"
+                )
         return "\n".join(lines)

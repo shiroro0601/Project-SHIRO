@@ -1,8 +1,10 @@
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+from company.reports.quality_feedback import QualityFeedbackParser
 
 
 @dataclass
@@ -21,6 +23,7 @@ class RunReport:
     voice_path: str
     video_path: str
     scene_video_path: Optional[str]
+    quality_feedback: dict = field(default_factory=dict)
 
 
 class RunReportWriter:
@@ -46,6 +49,8 @@ def build_run_report(
 ) -> RunReport:
     script_artifact = result.get("script_artifact")
     scene_assets = result.get("scene_assets", [])
+    review_result = str(result.get("review_result", ""))
+    quality_feedback = QualityFeedbackParser().parse(review_result)
 
     return RunReport(
         topic=topic,
@@ -54,7 +59,7 @@ def build_run_report(
         status=status,
         research_result=str(result.get("research_result", "")),
         script_result=str(result.get("script_result", "")),
-        review_result=str(result.get("review_result", "")),
+        review_result=review_result,
         script_title=str(getattr(script_artifact, "title", "") or ""),
         scenes=_scenes_to_dicts(script_artifact),
         assets=[_object_to_dict(asset) for asset in scene_assets],
@@ -62,6 +67,7 @@ def build_run_report(
         voice_path=str(result.get("voice_path", "")),
         video_path=str(result.get("video_path", "")),
         scene_video_path=result.get("scene_video_path"),
+        quality_feedback=asdict(quality_feedback),
     )
 
 
