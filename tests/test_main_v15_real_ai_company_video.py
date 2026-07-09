@@ -1,3 +1,7 @@
+import pytest
+
+from company.runtime.service_health import ServiceStatus
+
 import main_v15_real_ai_company_video as main_v15
 
 
@@ -65,6 +69,32 @@ class FakePublisher:
         }
 
 
+class FakeServiceHealthChecker:
+    def __init__(self, statuses):
+        self.statuses = statuses
+        self.check_all_calls = 0
+
+    def check_all(self):
+        self.check_all_calls += 1
+        return self.statuses
+
+
+def ok_statuses():
+    return [
+        ServiceStatus("Ollama", True, "ollama-url", "ok"),
+        ServiceStatus("Stable Diffusion", True, "sd-url", "ok"),
+        ServiceStatus("VOICEVOX", True, "voicevox-url", "ok"),
+    ]
+
+
+def ng_statuses():
+    return [
+        ServiceStatus("Ollama", True, "ollama-url", "ok"),
+        ServiceStatus("Stable Diffusion", False, "sd-url", "not running"),
+        ServiceStatus("VOICEVOX", True, "voicevox-url", "ok"),
+    ]
+
+
 def test_main_v15_importable():
     assert main_v15.DEFAULT_TOPIC == "猫の意外な雑学"
 
@@ -91,6 +121,12 @@ def test_parse_args_accepts_real_media_mode():
     args = main_v15.parse_args(["--real-media"])
 
     assert args.real_media is True
+
+
+def test_parse_args_accepts_check_services_mode():
+    args = main_v15.parse_args(["--check-services"])
+
+    assert args.check_services is True
 
 
 def test_create_media_generators_defaults_to_placeholder_mode():
@@ -147,3 +183,61 @@ def test_run_real_ai_company_video_with_fakes():
     assert result["scene_video_path"] == "fake_final_video.mp4"
     assert result["video_path"] == "fake_final_video.mp4"
     assert result["publish_result"]["status"] == "dry_run"
+
+
+def test_check_services_mode_does_not_run_company(capsys):
+    checker = FakeServiceHealthChecker(ok_statuses())
+
+    main_v15.main(["--check-services"], service_health_checker=checker)
+
+    captured = capsys.readouterr()
+    assert checker.check_all_calls == 1
+    assert "Project SHIRO Service Health Check" in captured.out
+    assert "[OK] Ollama" in captured.out
+    assert "media mode:" not in captured.out
+
+
+def test_real_media_checks_services_before_running(monkeypatch):
+    checker = FakeServiceHealthChecker(ok_statuses())
+    calls = []
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        calls.append({"topic": topic, "real_media": real_media})
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--real-media"], service_health_checker=checker)
+
+    assert checker.check_all_calls == 1
+    assert calls == [{"topic": main_v15.DEFAULT_TOPIC, "real_media": True}]
+
+
+def test_real_media_service_ng_raises_runtime_error(monkeypatch):
+    checker = FakeServiceHealthChecker(ng_statuses())
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("company run should not be called")
+
+    monkeypatch.setattr(main_v15, "run_real_ai_company_video", fail_if_called)
+
+    with pytest.raises(RuntimeError, match="Required local services are not ready"):
+        main_v15.main(["--real-media"], service_health_checker=checker)
+
+    assert checker.check_all_calls == 1
