@@ -13,6 +13,14 @@ class FakeProvider:
         return self.response
 
 
+class FakeMemoryContext:
+    def __init__(self, prompt_text="過去の実行履歴:\n1. topic: 前回の猫動画"):
+        self.prompt_text = prompt_text
+
+    def to_prompt_text(self) -> str:
+        return self.prompt_text
+
+
 def _task(input_data=None, instruction="猫の意外な雑学について作業してください。"):
     return TaskFactory.create_task(
         task_type=TaskType.GENERAL,
@@ -285,3 +293,78 @@ def test_reviewer_role_prefers_script_result_over_theme():
 
     prompt = provider.prompts[0]
     assert "猫だけに関係する台本" in prompt
+
+
+def test_research_role_with_memory_context_adds_memory_to_prompt():
+    provider = FakeProvider(response="research")
+    memory_context = FakeMemoryContext("過去の実行履歴:\n1. topic: 猫の雑学")
+    role = ResearchRole(provider=provider, memory_context=memory_context)
+
+    result = role.execute("猫の意外な雑学")
+
+    assert result == "research"
+    prompt = provider.prompts[0]
+    assert "過去の実行履歴:" in prompt
+    assert "1. topic: 猫の雑学" in prompt
+    assert "今回のテーマを最優先してください。" in prompt
+    assert "今回テーマに直接関係する部分だけ参考にしてください。" in prompt
+
+
+def test_research_role_without_memory_context_does_not_add_memory_to_prompt():
+    provider = FakeProvider(response="research")
+    role = ResearchRole(provider=provider)
+
+    role.execute("猫の意外な雑学")
+
+    prompt = provider.prompts[0]
+    assert "過去履歴は参考情報です。" not in prompt
+    assert "過去の実行履歴:\n1. topic:" not in prompt
+
+
+def test_writer_role_with_memory_context_adds_memory_to_prompt():
+    provider = FakeProvider(response="script")
+    memory_context = FakeMemoryContext("過去の実行履歴:\n1. topic: 猫の雑学")
+    role = WriterRole(provider=provider, memory_context=memory_context)
+
+    result = role.execute("猫はひげで幅を測る")
+
+    assert result == "script"
+    prompt = provider.prompts[0]
+    assert "過去の実行履歴:" in prompt
+    assert "1. topic: 猫の雑学" in prompt
+    assert "過去履歴は構成・品質改善の参考です。" in prompt
+    assert "今回の調査結果を最優先してください。" in prompt
+    assert "過去履歴のtopicを今回のtopicへ混入させないでください。" in prompt
+
+
+def test_writer_role_without_memory_context_does_not_add_memory_to_prompt():
+    provider = FakeProvider(response="script")
+    role = WriterRole(provider=provider)
+
+    role.execute("猫はひげで幅を測る")
+
+    prompt = provider.prompts[0]
+    assert "過去履歴は構成・品質改善の参考です。" not in prompt
+    assert "過去の実行履歴:\n1. topic:" not in prompt
+
+
+def test_memory_context_can_be_plain_string():
+    provider = FakeProvider(response="research")
+    role = ResearchRole(
+        provider=provider,
+        memory_context="過去の実行履歴:\n1. topic: 文字列memory",
+    )
+
+    role.execute("猫の意外な雑学")
+
+    assert "1. topic: 文字列memory" in provider.prompts[0]
+
+
+def test_memory_context_to_prompt_text_is_used():
+    provider = FakeProvider(response="script")
+    memory_context = FakeMemoryContext("過去の実行履歴:\n1. topic: object memory")
+    role = WriterRole(provider=provider, memory_context=memory_context)
+
+    role.execute("猫は狭い場所に入る")
+
+    assert "1. topic: object memory" in provider.prompts[0]

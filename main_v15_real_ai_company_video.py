@@ -119,10 +119,11 @@ def build_company(
     scene_video_composer=None,
     publisher=None,
     real_media: bool = False,
+    memory_context=None,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
-    researcher = ResearchRole(provider=provider)
-    writer = WriterRole(provider=provider)
+    researcher = ResearchRole(provider=provider, memory_context=memory_context)
+    writer = WriterRole(provider=provider, memory_context=memory_context)
     reviewer = ReviewerRole(provider=provider)
     if image_generator is None or voice_generator is None:
         default_image_generator, default_voice_generator = create_media_generators(
@@ -150,6 +151,7 @@ def run_real_ai_company_video(
     scene_video_composer=None,
     publisher=None,
     real_media: bool = False,
+    memory_context=None,
 ):
     company = build_company(
         provider=provider,
@@ -158,6 +160,7 @@ def run_real_ai_company_video(
         scene_video_composer=scene_video_composer,
         publisher=publisher,
         real_media=real_media,
+        memory_context=memory_context,
     )
     return company.run(topic)
 
@@ -284,6 +287,7 @@ def main(
 
     mode = "real media" if args.real_media else "placeholder"
     print(f"media mode: {mode}")
+    memory_context = None
     if args.use_memory:
         memory_context = load_memory_context(
             memory=memory,
@@ -293,10 +297,10 @@ def main(
     try:
         if args.real_media:
             ensure_services_ready(service_health_checker)
-        result = run_real_ai_company_video(
-            DEFAULT_TOPIC,
-            real_media=args.real_media,
-        )
+        run_kwargs = {"real_media": args.real_media}
+        if memory_context is not None:
+            run_kwargs["memory_context"] = memory_context
+        result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
     except RuntimeError as exc:
         _print_runtime_hint(exc)
         raise

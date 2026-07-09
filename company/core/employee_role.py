@@ -35,9 +35,14 @@ class DefaultEmployeeRole:
 class ResearchRole(DefaultEmployeeRole):
     name = "Researcher"
 
-    def __init__(self, provider: TextGenerationProvider | None = None):
+    def __init__(
+        self,
+        provider: TextGenerationProvider | None = None,
+        memory_context=None,
+    ):
         self.topic = ""
         self.provider = provider
+        self.memory_context = memory_context
 
     def prepare(self, task):
         self.topic = self._extract_topic(task)
@@ -53,6 +58,11 @@ class ResearchRole(DefaultEmployeeRole):
         return result
 
     def _build_prompt(self, topic: str) -> str:
+        memory_block = self._build_memory_block(
+            "過去履歴は参考情報です。\n"
+            "今回のテーマを最優先してください。\n"
+            "過去履歴と今回テーマが違う場合、今回テーマに直接関係する部分だけ参考にしてください。"
+        )
         return (
             "あなたはYouTubeショート動画のリサーチャーです。\n"
             "あなたは指定テーマ専門のリサーチ担当です。\n"
@@ -65,6 +75,7 @@ class ResearchRole(DefaultEmployeeRole):
             "猫の意外な雑学がテーマの場合は、必ず猫に直接関係する雑学だけを出してください。\n"
             "日本語で、5個、箇条書きで出してください。\n"
             "1個あたり1〜2文で、事実ベースにしてください。\n\n"
+            f"{memory_block}"
             "今回の調査テーマ:\n"
             f"{topic}\n\n"
             "【調査テーマ】\n"
@@ -93,6 +104,25 @@ class ResearchRole(DefaultEmployeeRole):
             "【理由5】\n"
             "..."
         )
+
+    def _build_memory_block(self, guidance: str) -> str:
+        memory_text = self._memory_text()
+        if not memory_text:
+            return ""
+        return (
+            "過去の実行履歴:\n"
+            f"{memory_text}\n\n"
+            f"{guidance}\n\n"
+        )
+
+    def _memory_text(self) -> str:
+        if self.memory_context is None:
+            return ""
+        if hasattr(self.memory_context, "to_prompt_text"):
+            memory_text = self.memory_context.to_prompt_text()
+        else:
+            memory_text = str(self.memory_context)
+        return memory_text.strip()
 
     def _resolve_input(self, task) -> str:
         topic = self._extract_topic(task)
@@ -124,9 +154,14 @@ class ResearchRole(DefaultEmployeeRole):
 class WriterRole(DefaultEmployeeRole):
     name = "Writer"
 
-    def __init__(self, provider: TextGenerationProvider | None = None):
+    def __init__(
+        self,
+        provider: TextGenerationProvider | None = None,
+        memory_context=None,
+    ):
         self.topic = ""
         self.provider = provider
+        self.memory_context = memory_context
 
     def prepare(self, task):
         self.topic = self._extract_topic(task)
@@ -142,6 +177,11 @@ class WriterRole(DefaultEmployeeRole):
         return result
 
     def _build_prompt(self, topic: str) -> str:
+        memory_block = self._build_memory_block(
+            "過去履歴は構成・品質改善の参考です。\n"
+            "今回の調査結果を最優先してください。\n"
+            "過去履歴のtopicを今回のtopicへ混入させないでください。"
+        )
         return (
             "あなたはYouTubeショート動画の台本作家です。\n"
             "以下のリサーチ結果だけを材料にして、60秒以内の日本語ナレーション台本を書いてください。\n"
@@ -153,6 +193,7 @@ class WriterRole(DefaultEmployeeRole):
             "research_resultに含まれないテーマ、ゲーム、車、パソコンなどへ変更しないでください。\n"
             "ネットワーク、別ジャンル、無関係な話題に移らないでください。\n"
             "ナレーションで読み上げやすい自然な文章にしてください。\n\n"
+            f"{memory_block}"
             "入力された調査結果:\n"
             f"{topic}\n\n"
             "リサーチ結果:\n"
@@ -167,6 +208,25 @@ class WriterRole(DefaultEmployeeRole):
             "【画像指示】\n"
             "..."
         )
+
+    def _build_memory_block(self, guidance: str) -> str:
+        memory_text = self._memory_text()
+        if not memory_text:
+            return ""
+        return (
+            "過去の実行履歴:\n"
+            f"{memory_text}\n\n"
+            f"{guidance}\n\n"
+        )
+
+    def _memory_text(self) -> str:
+        if self.memory_context is None:
+            return ""
+        if hasattr(self.memory_context, "to_prompt_text"):
+            memory_text = self.memory_context.to_prompt_text()
+        else:
+            memory_text = str(self.memory_context)
+        return memory_text.strip()
 
     def _resolve_input(self, task) -> str:
         topic = self._extract_topic(task)

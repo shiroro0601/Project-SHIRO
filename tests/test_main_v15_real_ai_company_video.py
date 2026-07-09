@@ -151,6 +151,37 @@ def test_build_company_accepts_dependency_injection():
     assert company is not None
 
 
+def test_build_company_passes_memory_context_to_researcher_and_writer_only():
+    memory_context = FakeMemoryContext()
+
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        memory_context=memory_context,
+    )
+
+    assert company.researcher.memory_context is memory_context
+    assert company.writer.memory_context is memory_context
+    assert not hasattr(company.reviewer, "memory_context")
+
+
+def test_build_company_without_memory_context_keeps_roles_without_memory():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+    )
+
+    assert company.researcher.memory_context is None
+    assert company.writer.memory_context is None
+    assert not hasattr(company.reviewer, "memory_context")
+
+
 def test_parse_args_defaults_to_placeholder_mode():
     args = main_v15.parse_args([])
 
@@ -420,8 +451,20 @@ def test_main_no_report_and_save_memory_still_saves_memory(monkeypatch, capsys):
 
 def test_main_use_memory_loads_and_prints_memory_context(monkeypatch, capsys):
     retriever = FakeMemoryRetriever()
+    calls = []
 
-    def fake_run_real_ai_company_video(topic, real_media=False):
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        memory_context=None,
+    ):
+        calls.append(
+            {
+                "topic": topic,
+                "real_media": real_media,
+                "memory_context": memory_context,
+            }
+        )
         return {
             "topic": topic,
             "research_result": "research",
@@ -446,6 +489,7 @@ def test_main_use_memory_loads_and_prints_memory_context(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert retriever.build_context_calls == [3]
+    assert calls[0]["memory_context"] is retriever.context
     assert "Memory context:" in captured.out
     assert "1. topic: 猫の意外な雑学" in captured.out
 
@@ -453,8 +497,14 @@ def test_main_use_memory_loads_and_prints_memory_context(monkeypatch, capsys):
 def test_main_use_memory_and_save_memory_can_run_together(monkeypatch, capsys):
     memory = FakeMemory()
     retriever = FakeMemoryRetriever()
+    calls = []
 
-    def fake_run_real_ai_company_video(topic, real_media=False):
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        memory_context=None,
+    ):
+        calls.append(memory_context)
         return {
             "topic": topic,
             "research_result": "research",
@@ -483,6 +533,7 @@ def test_main_use_memory_and_save_memory_can_run_together(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert retriever.build_context_calls == [3]
+    assert calls == [retriever.context]
     assert len(memory.saved_data) == 1
     assert "Memory context:" in captured.out
     assert "Memory saved: real_ai_company_run" in captured.out
