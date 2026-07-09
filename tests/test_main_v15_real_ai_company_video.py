@@ -101,6 +101,24 @@ class FakeMemory:
         self.data = data
 
 
+class FakeMemoryContext:
+    def __init__(self, prompt_text="過去の実行履歴:\n1. topic: 猫の意外な雑学"):
+        self.prompt_text = prompt_text
+
+    def to_prompt_text(self):
+        return self.prompt_text
+
+
+class FakeMemoryRetriever:
+    def __init__(self, context=None):
+        self.context = context or FakeMemoryContext()
+        self.build_context_calls = []
+
+    def build_context(self, limit=3):
+        self.build_context_calls.append(limit)
+        return self.context
+
+
 def ok_statuses():
     return [
         ServiceStatus("Ollama", True, "ollama-url", "ok"),
@@ -161,6 +179,12 @@ def test_parse_args_accepts_save_memory_mode():
     args = main_v15.parse_args(["--save-memory"])
 
     assert args.save_memory is True
+
+
+def test_parse_args_accepts_use_memory_mode():
+    args = main_v15.parse_args(["--use-memory"])
+
+    assert args.use_memory is True
 
 
 def test_create_media_generators_defaults_to_placeholder_mode():
@@ -391,6 +415,76 @@ def test_main_no_report_and_save_memory_still_saves_memory(monkeypatch, capsys):
     assert report_writer.reports == []
     assert len(memory.saved_data) == 1
     assert "Run report:" not in captured.out
+    assert "Memory saved: real_ai_company_run" in captured.out
+
+
+def test_main_use_memory_loads_and_prints_memory_context(monkeypatch, capsys):
+    retriever = FakeMemoryRetriever()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--use-memory", "--no-report"], memory_retriever=retriever)
+
+    captured = capsys.readouterr()
+    assert retriever.build_context_calls == [3]
+    assert "Memory context:" in captured.out
+    assert "1. topic: 猫の意外な雑学" in captured.out
+
+
+def test_main_use_memory_and_save_memory_can_run_together(monkeypatch, capsys):
+    memory = FakeMemory()
+    retriever = FakeMemoryRetriever()
+
+    def fake_run_real_ai_company_video(topic, real_media=False):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        ["--use-memory", "--save-memory", "--no-report"],
+        memory=memory,
+        memory_retriever=retriever,
+    )
+
+    captured = capsys.readouterr()
+    assert retriever.build_context_calls == [3]
+    assert len(memory.saved_data) == 1
+    assert "Memory context:" in captured.out
     assert "Memory saved: real_ai_company_run" in captured.out
 
 

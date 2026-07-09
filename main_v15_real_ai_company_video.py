@@ -8,6 +8,7 @@ from pprint import pprint
 from company.brain.provider import OllamaProvider
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
 from company.memory.company_memory import CompanyMemory
+from company.memory.memory_retriever import MemoryRetriever
 from company.reports.run_report import RunReportWriter, build_run_report
 from company.reports.run_report_memory_adapter import RunReportMemoryAdapter
 from company.runtime.service_health import ServiceHealthChecker
@@ -90,6 +91,11 @@ def parse_args(argv=None):
         "--save-memory",
         action="store_true",
         help="Save a compact run report record to CompanyMemory.",
+    )
+    parser.add_argument(
+        "--use-memory",
+        action="store_true",
+        help="Load recent run reports from CompanyMemory before execution.",
     )
     return parser.parse_args(argv)
 
@@ -218,6 +224,16 @@ def save_run_report_to_memory(report, memory=None, adapter=None) -> dict:
     return record
 
 
+def load_memory_context(memory=None, memory_retriever=None, limit: int = 3):
+    retriever = memory_retriever or MemoryRetriever(memory or CompanyMemory())
+    return retriever.build_context(limit=limit)
+
+
+def print_memory_context(memory_context) -> None:
+    print("Memory context:")
+    print(memory_context.to_prompt_text())
+
+
 def print_service_statuses(statuses) -> None:
     print("Project SHIRO Service Health Check")
     print("=" * 36)
@@ -257,6 +273,7 @@ def main(
     report_writer=None,
     memory=None,
     memory_adapter=None,
+    memory_retriever=None,
 ) -> None:
     configure_stdout()
     args = parse_args(argv)
@@ -267,6 +284,12 @@ def main(
 
     mode = "real media" if args.real_media else "placeholder"
     print(f"media mode: {mode}")
+    if args.use_memory:
+        memory_context = load_memory_context(
+            memory=memory,
+            memory_retriever=memory_retriever,
+        )
+        print_memory_context(memory_context)
     try:
         if args.real_media:
             ensure_services_ready(service_health_checker)
