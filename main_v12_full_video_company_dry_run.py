@@ -5,6 +5,7 @@ from company.approval.approval_resume import (
     ApprovalResumeResult,
     current_resume_time,
 )
+from company.approval.exceptions import ApprovalRequestNotFoundError
 from company.approval.human_approval import STATUS_APPROVED, STATUS_REJECTED
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
@@ -370,6 +371,62 @@ class FullAutoVideoPipeline:
         merged = dict(resume_result)
         merged["execution_order"] = result["execution_order"]
         return merged
+
+    def resume_approved_production_by_approval_id(self, approval_id: str) -> dict:
+        if self.human_approval_gate is None:
+            raise ApprovalRequestNotFoundError(
+                f"Approval request not found: {approval_id}"
+            )
+
+        approval_request = self.human_approval_gate.get_request(approval_id)
+        script_artifact = self.script_artifact_parser.parse(
+            approval_request.script_result
+        )
+        quality_feedback = self.quality_feedback_parser.parse(
+            approval_request.review_result
+        )
+        resume_context = self.human_approval_gate.build_resume_context(
+            approval_request,
+            script_artifact=script_artifact,
+            quality_feedback=quality_feedback,
+        )
+        resume_result = self.resume_approved_production(resume_context)
+        resume_result.update(
+            {
+                "topic": approval_request.topic,
+                "research_result": "",
+                "script_result": approval_request.script_result,
+                "script_artifact": script_artifact,
+                "review_result": approval_request.review_result,
+                "quality_feedback": quality_feedback,
+                "quality_retry_count": int(
+                    approval_request.metadata.get("quality_retry_count", 0) or 0
+                ),
+                "quality_retry_history": list(
+                    approval_request.metadata.get("quality_retry_history", []) or []
+                ),
+                "research_retry_count": int(
+                    approval_request.metadata.get("research_retry_count", 0) or 0
+                ),
+                "research_retry_history": list(
+                    approval_request.metadata.get("research_retry_history", []) or []
+                ),
+                "ceo_decision": None,
+                "ceo_decision_history": list(
+                    approval_request.metadata.get("ceo_decision_history", []) or []
+                ),
+                "stopped": True,
+                "stop_stage": approval_request.stage,
+                "stop_reason": approval_request.reason,
+                "production_skipped": False,
+                "approval_required": True,
+                "approval_request": approval_request.to_dict(),
+                "approval_status": approval_request.status,
+                "approval_decision": None,
+                "approval_resume_context": resume_context,
+            }
+        )
+        return resume_result
 
     def _build_stopped_result(
         self,
