@@ -226,3 +226,23 @@ def test_memory_context_approval_status_goes_to_avoid_patterns():
         "topic: 猫の雑学; stop_reason: Retry limit reached.; "
         "approval_status: pending"
     ) in prompt_text
+
+
+def test_memory_context_shows_production_resume_status():
+    context = MemoryContext(
+        records=[
+            {
+                "topic": "猫の雑学",
+                "approval_status": "approved",
+                "production_resumed": True,
+                "production_resume_completed": True,
+                "summary": "人間CEO承認後にProductionを再開しました。",
+            }
+        ]
+    )
+
+    prompt_text = context.to_prompt_text()
+
+    assert "approval_status: approved" in prompt_text
+    assert "production_resumed: True" in prompt_text
+    assert "production_resume_completed: True" in prompt_text

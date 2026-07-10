@@ -46,6 +46,10 @@ def test_run_report_can_be_created():
     assert report.approval_status == "not_required"
     assert report.approval_request is None
     assert report.approval_decision is None
+    assert report.resumed_from_approval is False
+    assert report.production_resumed is False
+    assert report.production_resume_completed is False
+    assert report.approval_resume_result is None
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -197,6 +201,14 @@ def test_build_run_report_converts_result_dict_to_report():
             "decided_by": "Koshi",
             "comment": "OK",
         },
+        "resumed_from_approval": True,
+        "production_resumed": True,
+        "production_resume_completed": True,
+        "approval_resume_result": {
+            "approval_id": "approval-1",
+            "production_completed": True,
+            "video_path": "video.mp4",
+        },
     }
 
     report = build_run_report(
@@ -285,3 +297,7 @@ def test_build_run_report_converts_result_dict_to_report():
     assert report.approval_status == "approved"
     assert report.approval_request["approval_id"] == "approval-1"
     assert report.approval_decision["decision"] == "approved"
+    assert report.resumed_from_approval is True
+    assert report.production_resumed is True
+    assert report.production_resume_completed is True
+    assert report.approval_resume_result["production_completed"] is True

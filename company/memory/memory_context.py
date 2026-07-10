@@ -61,6 +61,13 @@ class MemoryContext:
             )
         if "approval_status" in record:
             lines.append(f"   approval_status: {record.get('approval_status', '')}")
+        if "production_resumed" in record:
+            lines.append(f"   production_resumed: {record.get('production_resumed', '')}")
+        if "production_resume_completed" in record:
+            lines.append(
+                "   production_resume_completed: "
+                f"{record.get('production_resume_completed', '')}"
+            )
         return lines
 
     def _success_pattern_lines(self) -> list[str]:

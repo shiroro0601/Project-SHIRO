@@ -1,6 +1,10 @@
 from pprint import pprint
 from dataclasses import asdict
 
+from company.approval.approval_resume import (
+    ApprovalResumeResult,
+    current_resume_time,
+)
 from company.approval.human_approval import STATUS_APPROVED, STATUS_REJECTED
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
@@ -108,6 +112,7 @@ class FullAutoVideoPipeline:
         approval_decision: str | None = None,
         approval_decided_by: str = "human",
         approval_comment: str = "",
+        resume_approved_production: bool = False,
     ):
         if quality_retry_limit < 0:
             raise ValueError("quality_retry_limit must be greater than or equal to 0.")
@@ -134,6 +139,7 @@ class FullAutoVideoPipeline:
         self.approval_decision = approval_decision
         self.approval_decided_by = approval_decided_by
         self.approval_comment = approval_comment
+        self.resume_approved_production_enabled = resume_approved_production
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -170,6 +176,59 @@ class FullAutoVideoPipeline:
                 ceo_decision_history=ceo_decision_history,
             )
 
+        production_result = self._run_production(
+            topic=topic,
+            script_result=script_result,
+            script_artifact=script_artifact,
+            review_result=review_result,
+            execution_order=execution_order,
+        )
+
+        result = {
+            "topic": topic,
+            "execution_order": execution_order,
+            "research_result": research_result,
+            "script_result": script_result,
+            "script_artifact": script_artifact,
+            "scene_assets": production_result["scene_assets"],
+            "review_result": review_result,
+            "quality_feedback": quality_feedback,
+            "quality_retry_count": quality_retry_count,
+            "quality_retry_history": quality_retry_history,
+            "research_retry_count": research_retry_count,
+            "research_retry_history": research_retry_history,
+            "ceo_decision": ceo_decision.to_dict() if ceo_decision is not None else None,
+            "ceo_decision_history": ceo_decision_history,
+            "image_path": production_result["image_path"],
+            "voice_path": production_result["voice_path"],
+            "scene_video_path": production_result["scene_video_path"],
+            "video_path": production_result["video_path"],
+            "publish_result": production_result["publish_result"],
+            "stopped": False,
+            "stop_stage": None,
+            "stop_reason": "",
+            "production_skipped": False,
+            "approval_required": False,
+            "approval_request": None,
+            "approval_status": "not_required",
+            "approval_decision": None,
+            "approval_resume_context": None,
+            "resumed_from_approval": False,
+            "production_resumed": False,
+            "production_resume_completed": False,
+            "approval_resume_result": None,
+        }
+        return result
+
+    def _run_production(
+        self,
+        *,
+        topic: str,
+        script_result: str,
+        script_artifact,
+        review_result: str,
+        execution_order: list[str],
+    ) -> dict:
         scene_assets = self._generate_scene_assets(script_artifact, execution_order)
 
         if scene_assets:
@@ -236,34 +295,81 @@ class FullAutoVideoPipeline:
         )
 
         return {
-            "topic": topic,
-            "execution_order": execution_order,
-            "research_result": research_result,
-            "script_result": script_result,
-            "script_artifact": script_artifact,
             "scene_assets": scene_assets,
-            "review_result": review_result,
-            "quality_feedback": quality_feedback,
-            "quality_retry_count": quality_retry_count,
-            "quality_retry_history": quality_retry_history,
-            "research_retry_count": research_retry_count,
-            "research_retry_history": research_retry_history,
-            "ceo_decision": ceo_decision.to_dict() if ceo_decision is not None else None,
-            "ceo_decision_history": ceo_decision_history,
             "image_path": image_path,
             "voice_path": voice_path,
             "scene_video_path": scene_video_path,
             "video_path": video_path,
             "publish_result": publish_result,
-            "stopped": False,
-            "stop_stage": None,
-            "stop_reason": "",
-            "production_skipped": False,
-            "approval_required": False,
-            "approval_request": None,
-            "approval_status": "not_required",
-            "approval_decision": None,
         }
+
+    def resume_approved_production(self, resume_context) -> dict:
+        execution_order: list[str] = []
+        resume_result = ApprovalResumeResult(
+            resumed=True,
+            approval_id=resume_context.approval_id,
+            resumed_at=current_resume_time(),
+            production_completed=False,
+            image_path="",
+            voice_path="",
+            scene_assets=[],
+            scene_video_path=None,
+            video_path="",
+            publish_result=None,
+            error="",
+        )
+        try:
+            production_result = self._run_production(
+                topic=resume_context.topic,
+                script_result=resume_context.script_result,
+                script_artifact=resume_context.script_artifact,
+                review_result=resume_context.review_result,
+                execution_order=execution_order,
+            )
+        except Exception as exc:
+            resume_result.error = str(exc)
+            return {
+                "execution_order": execution_order,
+                "scene_assets": [],
+                "image_path": "",
+                "voice_path": "",
+                "scene_video_path": None,
+                "video_path": "",
+                "publish_result": None,
+                "resumed_from_approval": True,
+                "approval_id": resume_context.approval_id,
+                "production_resumed": True,
+                "production_resume_completed": False,
+                "approval_resume_result": asdict(resume_result),
+            }
+
+        resume_result.production_completed = True
+        resume_result.image_path = production_result["image_path"]
+        resume_result.voice_path = production_result["voice_path"]
+        resume_result.scene_assets = production_result["scene_assets"]
+        resume_result.scene_video_path = production_result["scene_video_path"]
+        resume_result.video_path = production_result["video_path"]
+        resume_result.publish_result = production_result["publish_result"]
+        return {
+            "execution_order": execution_order,
+            **production_result,
+            "resumed_from_approval": True,
+            "approval_id": resume_context.approval_id,
+            "production_resumed": True,
+            "production_resume_completed": True,
+            "approval_resume_result": asdict(resume_result),
+        }
+
+    def resume_approved_production_from_result(
+        self,
+        result: dict,
+        resume_context,
+    ) -> dict:
+        resume_result = self.resume_approved_production(resume_context)
+        result["execution_order"].extend(resume_result.get("execution_order", []))
+        merged = dict(resume_result)
+        merged["execution_order"] = result["execution_order"]
+        return merged
 
     def _build_stopped_result(
         self,
@@ -284,6 +390,7 @@ class FullAutoVideoPipeline:
         approval_state = self._build_approval_state(
             topic=topic,
             ceo_decision=ceo_decision,
+            script_artifact=script_artifact,
             quality_feedback=quality_feedback,
             script_result=script_result,
             review_result=review_result,
@@ -293,7 +400,7 @@ class FullAutoVideoPipeline:
             research_retry_history=research_retry_history,
             ceo_decision_history=ceo_decision_history,
         )
-        return {
+        result = {
             "topic": topic,
             "execution_order": execution_order,
             "research_result": research_result,
@@ -317,14 +424,28 @@ class FullAutoVideoPipeline:
             "stop_stage": self._ceo_stage(ceo_decision) or "review",
             "stop_reason": self._ceo_reason(ceo_decision),
             "production_skipped": True,
+            "approval_resume_context": None,
+            "resumed_from_approval": False,
+            "production_resumed": False,
+            "production_resume_completed": False,
+            "approval_resume_result": None,
             **approval_state,
         }
+        if self.resume_approved_production_enabled and approval_state.get("approval_resume_context"):
+            result.update(
+                self.resume_approved_production_from_result(
+                    result,
+                    approval_state["approval_resume_context"],
+                )
+            )
+        return result
 
     def _build_approval_state(
         self,
         *,
         topic: str,
         ceo_decision,
+        script_artifact,
         quality_feedback: dict,
         script_result: str,
         review_result: str,
@@ -340,6 +461,7 @@ class FullAutoVideoPipeline:
                 "approval_request": None,
                 "approval_status": "not_required",
                 "approval_decision": None,
+                "approval_resume_context": None,
             }
 
         approval_request = self.human_approval_gate.create_request(
@@ -359,6 +481,14 @@ class FullAutoVideoPipeline:
             },
         )
         approval_decision = self._resolve_approval_decision(approval_request)
+        approval_resume_context = None
+        if approval_request.status == STATUS_APPROVED:
+            approval_resume_context = self.human_approval_gate.build_resume_context(
+                approval_request,
+                script_artifact=script_artifact,
+                quality_feedback=quality_feedback,
+                ceo_decision=ceo_decision,
+            )
         return {
             "approval_required": True,
             "approval_request": asdict(approval_request),
@@ -366,6 +496,7 @@ class FullAutoVideoPipeline:
             "approval_decision": (
                 asdict(approval_decision) if approval_decision is not None else None
             ),
+            "approval_resume_context": approval_resume_context,
         }
 
     def _resolve_approval_decision(self, approval_request):

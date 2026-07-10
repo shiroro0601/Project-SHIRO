@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
 
+from company.approval.approval_resume import ApprovalResumeContext
+
 
 STATUS_PENDING = "pending"
 STATUS_APPROVED = "approved"
@@ -91,6 +93,27 @@ class HumanApprovalGate:
             decision=STATUS_REJECTED,
             decided_by=decided_by,
             comment=comment,
+        )
+
+    def build_resume_context(
+        self,
+        request: ApprovalRequest,
+        *,
+        script_artifact,
+        quality_feedback=None,
+        ceo_decision=None,
+    ) -> ApprovalResumeContext:
+        if request.status != STATUS_APPROVED:
+            raise ValueError("Approval request must be approved before resuming production.")
+        return ApprovalResumeContext(
+            approval_id=request.approval_id,
+            topic=request.topic,
+            script_result=request.script_result,
+            review_result=request.review_result,
+            script_artifact=script_artifact,
+            quality_feedback=quality_feedback,
+            ceo_decision=ceo_decision,
+            metadata=dict(request.metadata or {}),
         )
 
     def _decide(

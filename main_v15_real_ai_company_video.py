@@ -147,6 +147,11 @@ def parse_args(argv=None):
         default="human",
         help="Name recorded as the approval decision maker.",
     )
+    parser.add_argument(
+        "--resume-approved-production",
+        action="store_true",
+        help="Resume production in the same run after an approved human approval.",
+    )
     return parser.parse_args(argv)
 
 
@@ -179,6 +184,7 @@ def build_company(
     approval_decision: str | None = None,
     approval_decided_by: str = "human",
     approval_comment: str = "",
+    resume_approved_production: bool = False,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider, memory_context=memory_context)
@@ -208,6 +214,7 @@ def build_company(
         approval_decision=approval_decision,
         approval_decided_by=approval_decided_by,
         approval_comment=approval_comment,
+        resume_approved_production=resume_approved_production,
     )
 
 
@@ -229,6 +236,7 @@ def run_real_ai_company_video(
     approval_decision: str | None = None,
     approval_decided_by: str = "human",
     approval_comment: str = "",
+    resume_approved_production: bool = False,
 ):
     company = build_company(
         provider=provider,
@@ -247,6 +255,7 @@ def run_real_ai_company_video(
         approval_decision=approval_decision,
         approval_decided_by=approval_decided_by,
         approval_comment=approval_comment,
+        resume_approved_production=resume_approved_production,
     )
     return company.run(topic)
 
@@ -341,8 +350,29 @@ def print_human_approval_status(result: dict) -> None:
         print(f"- decision: {approval_decision.get('decision', '')}")
         print(f"- decided by: {approval_decision.get('decided_by', '')}")
         print(f"- comment: {approval_decision.get('comment', '')}")
-        if approval_decision.get("decision") == "approved":
-            print("Approval approved, but production resume is not implemented in this Sprint.")
+        if approval_decision.get("decision") == "approved" and not result.get(
+            "production_resumed"
+        ):
+            print("Approval approved, but production resume was not requested.")
+
+
+def print_approval_resume_status(result: dict, requested: bool) -> None:
+    resume_result = result.get("approval_resume_result") or {}
+    print("Approval resume:")
+    print(f"- requested: {'yes' if requested else 'no'}")
+    print(f"- approval id: {result.get('approval_id') or resume_result.get('approval_id', '')}")
+    print(f"- approval status: {result.get('approval_status', 'not_required')}")
+    print(f"- resumed: {'yes' if result.get('production_resumed') else 'no'}")
+    print(
+        "- production completed: "
+        f"{'yes' if result.get('production_resume_completed') else 'no'}"
+    )
+    print(f"- video path: {result.get('video_path', '')}")
+    if requested and not result.get("production_resumed"):
+        if result.get("approval_status") == "pending":
+            print("- reason: approval is pending")
+        elif result.get("approval_status") == "rejected":
+            print("- reason: approval was rejected")
 
 
 def write_run_report(
@@ -458,6 +488,12 @@ def main(
         args.stop_on_ceo_stop = True
     if args.approval_decision and not args.human_approval:
         raise ValueError("--approval-decision requires --human-approval")
+    if args.resume_approved_production and not args.human_approval:
+        raise ValueError("--resume-approved-production requires --human-approval")
+    if args.resume_approved_production and args.approval_decision != "approved":
+        raise ValueError(
+            "--resume-approved-production requires --approval-decision approved"
+        )
     if args.quality_retries < 0:
         raise ValueError("--quality-retries must be greater than or equal to 0")
     if args.research_retries < 0:
@@ -501,6 +537,7 @@ def main(
             run_kwargs["approval_decision"] = args.approval_decision
             run_kwargs["approval_decided_by"] = args.approval_decided_by
             run_kwargs["approval_comment"] = args.approval_comment
+            run_kwargs["resume_approved_production"] = args.resume_approved_production
         if memory_context is not None:
             run_kwargs["memory_context"] = memory_context
         result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
@@ -514,6 +551,7 @@ def main(
     print_ceo_decision_status(result)
     print_ceo_stop_control_status(result, args.stop_on_ceo_stop)
     print_human_approval_status(result)
+    print_approval_resume_status(result, args.resume_approved_production)
     report = build_run_report(
         topic=str(result.get("topic", DEFAULT_TOPIC)),
         media_mode=mode,

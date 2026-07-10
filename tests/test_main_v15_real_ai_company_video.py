@@ -272,6 +272,19 @@ def test_parse_args_accepts_approval_decision():
     assert args.approval_decided_by == "Koshi"
 
 
+def test_parse_args_accepts_resume_approved_production():
+    args = main_v15.parse_args(
+        [
+            "--human-approval",
+            "--approval-decision",
+            "approved",
+            "--resume-approved-production",
+        ]
+    )
+
+    assert args.resume_approved_production is True
+
+
 def test_parse_args_research_retries_default_is_zero():
     args = main_v15.parse_args([])
 
@@ -288,6 +301,12 @@ def test_parse_args_human_approval_default_is_false():
     args = main_v15.parse_args([])
 
     assert args.human_approval is False
+
+
+def test_parse_args_resume_approved_production_default_is_false():
+    args = main_v15.parse_args([])
+
+    assert args.resume_approved_production is False
 
 
 def test_parse_args_ceo_decision_default_is_false():
@@ -410,6 +429,19 @@ def test_build_company_passes_human_approval_options():
     assert company.approval_decision == "approved"
     assert company.approval_decided_by == "Koshi"
     assert company.approval_comment == "OK"
+
+
+def test_build_company_passes_resume_approved_production():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        resume_approved_production=True,
+    )
+
+    assert company.resume_approved_production_enabled is True
 
 
 def test_run_real_ai_company_video_with_fakes():
@@ -1454,6 +1486,7 @@ def test_main_human_approval_enables_ceo_stop_and_gate(monkeypatch, capsys):
         approval_decision=None,
         approval_decided_by="human",
         approval_comment="",
+        resume_approved_production=False,
     ):
         calls.append(
             {
@@ -1532,6 +1565,7 @@ def test_main_human_approval_can_record_approved_decision(monkeypatch, capsys):
         approval_decision=None,
         approval_decided_by="human",
         approval_comment="",
+        resume_approved_production=False,
     ):
         calls.append(
             {
@@ -1605,9 +1639,123 @@ def test_main_human_approval_can_record_approved_decision(monkeypatch, capsys):
     }
     assert "- status: approved" in captured.out
     assert "- decision: approved" in captured.out
-    assert "production resume is not implemented" in captured.out
+    assert "production resume was not requested" in captured.out
 
 
 def test_main_rejects_approval_decision_without_human_approval():
     with pytest.raises(ValueError, match="requires --human-approval"):
         main_v15.main(["--approval-decision", "approved", "--no-report"])
+
+
+def test_main_rejects_resume_without_human_approval():
+    with pytest.raises(ValueError, match="requires --human-approval"):
+        main_v15.main(["--resume-approved-production", "--no-report"])
+
+
+def test_main_rejects_resume_without_approved_decision():
+    with pytest.raises(ValueError, match="requires --approval-decision approved"):
+        main_v15.main(
+            [
+                "--human-approval",
+                "--approval-decision",
+                "rejected",
+                "--resume-approved-production",
+                "--no-report",
+            ]
+        )
+
+
+def test_main_resume_approved_production_passes_flag_and_prints_status(
+    monkeypatch,
+    capsys,
+):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+        stop_on_ceo_stop=False,
+        human_approval_gate=None,
+        require_human_approval_on_stop=False,
+        approval_decision=None,
+        approval_decided_by="human",
+        approval_comment="",
+        resume_approved_production=False,
+    ):
+        calls.append(
+            {
+                "approval_decision": approval_decision,
+                "resume_approved_production": resume_approved_production,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": {"action": "stop", "reason": "Retry limit reached."},
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+            "stopped": True,
+            "stop_stage": "review",
+            "stop_reason": "Retry limit reached.",
+            "production_skipped": True,
+            "approval_required": True,
+            "approval_request": {
+                "approval_id": "approval-1",
+                "status": "approved",
+                "stage": "review",
+                "reason": "Retry limit reached.",
+            },
+            "approval_status": "approved",
+            "approval_decision": {"decision": "approved"},
+            "resumed_from_approval": True,
+            "approval_id": "approval-1",
+            "production_resumed": True,
+            "production_resume_completed": True,
+            "approval_resume_result": {
+                "approval_id": "approval-1",
+                "production_completed": True,
+            },
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        [
+            "--human-approval",
+            "--approval-decision",
+            "approved",
+            "--resume-approved-production",
+            "--no-report",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert calls == [
+        {
+            "approval_decision": "approved",
+            "resume_approved_production": True,
+        }
+    ]
+    assert "Approval resume:" in captured.out
+    assert "- requested: yes" in captured.out
+    assert "- resumed: yes" in captured.out
+    assert "- production completed: yes" in captured.out
+    assert "- video path: video.mp4" in captured.out

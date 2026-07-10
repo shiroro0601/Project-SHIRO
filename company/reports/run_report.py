@@ -38,6 +38,10 @@ class RunReport:
     approval_status: str = "not_required"
     approval_request: dict | None = None
     approval_decision: dict | None = None
+    resumed_from_approval: bool = False
+    production_resumed: bool = False
+    production_resume_completed: bool = False
+    approval_resume_result: dict | None = None
 
 
 class RunReportWriter:
@@ -102,6 +106,12 @@ def build_run_report(
         approval_status=str(result.get("approval_status", "not_required")),
         approval_request=_optional_dict(result.get("approval_request")),
         approval_decision=_optional_dict(result.get("approval_decision")),
+        resumed_from_approval=bool(result.get("resumed_from_approval", False)),
+        production_resumed=bool(result.get("production_resumed", False)),
+        production_resume_completed=bool(
+            result.get("production_resume_completed", False)
+        ),
+        approval_resume_result=_optional_dict(result.get("approval_resume_result")),
     )
 
 
