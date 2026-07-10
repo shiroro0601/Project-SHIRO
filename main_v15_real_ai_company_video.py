@@ -6,6 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from company.brain.provider import OllamaProvider
+from company.core.ceo_decision import CEODecisionPolicy
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
 from company.memory.company_memory import CompanyMemory
 from company.memory.memory_retriever import MemoryRetriever
@@ -108,6 +109,11 @@ def parse_args(argv=None):
         default=0,
         help="Retry script writing when reviewer quality decision is 修正必要.",
     )
+    parser.add_argument(
+        "--ceo-decision",
+        action="store_true",
+        help="Enable rule-based CEO decision policy for review stage decisions.",
+    )
     return parser.parse_args(argv)
 
 
@@ -132,6 +138,7 @@ def build_company(
     real_media: bool = False,
     memory_context=None,
     quality_retry_limit: int = 0,
+    ceo_decision_policy=None,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider, memory_context=memory_context)
@@ -153,6 +160,7 @@ def build_company(
         scene_video_composer=scene_video_composer or MoviePySceneVideoComposer(),
         publisher=publisher,
         quality_retry_limit=quality_retry_limit,
+        ceo_decision_policy=ceo_decision_policy,
     )
 
 
@@ -166,6 +174,7 @@ def run_real_ai_company_video(
     real_media: bool = False,
     memory_context=None,
     quality_retry_limit: int = 0,
+    ceo_decision_policy=None,
 ):
     company = build_company(
         provider=provider,
@@ -176,6 +185,7 @@ def run_real_ai_company_video(
         real_media=real_media,
         memory_context=memory_context,
         quality_retry_limit=quality_retry_limit,
+        ceo_decision_policy=ceo_decision_policy,
     )
     return company.run(topic)
 
@@ -225,6 +235,19 @@ def print_quality_retry_status(result: dict, limit: int) -> None:
     print(f"- retries used: {result.get('quality_retry_count', 0)}")
     print(f"- final decision: {quality_feedback.get('decision', '')}")
     print(f"- final score: {quality_feedback.get('score', '')}")
+
+
+def print_ceo_decision_status(result: dict) -> None:
+    decision = result.get("ceo_decision")
+    if not decision:
+        return
+    print("CEO decision:")
+    print(f"- action: {decision.get('action', '')}")
+    print(f"- reason: {decision.get('reason', '')}")
+    print(f"- stage: {decision.get('stage', '')}")
+    print(f"- quality decision: {decision.get('quality_decision', '')}")
+    print(f"- quality score: {decision.get('quality_score', '')}")
+    print(f"- retry count: {decision.get('retry_count', '')}")
 
 
 def write_run_report(
@@ -360,6 +383,8 @@ def main(
         run_kwargs = {"real_media": args.real_media}
         if args.quality_retries:
             run_kwargs["quality_retry_limit"] = args.quality_retries
+        if args.ceo_decision:
+            run_kwargs["ceo_decision_policy"] = CEODecisionPolicy()
         if memory_context is not None:
             run_kwargs["memory_context"] = memory_context
         result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
@@ -369,6 +394,7 @@ def main(
 
     print_result(result)
     print_quality_retry_status(result, args.quality_retries)
+    print_ceo_decision_status(result)
     report = build_run_report(
         topic=str(result.get("topic", DEFAULT_TOPIC)),
         media_mode=mode,

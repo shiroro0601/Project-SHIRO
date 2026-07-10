@@ -3,6 +3,7 @@ from dataclasses import asdict
 
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
+from company.core.ceo_decision import ACTION_REVISE
 from company.core.employee_role import (
     EditorRole,
     ImageRole,
@@ -98,6 +99,7 @@ class FullAutoVideoPipeline:
         script_artifact_parser=None,
         scene_video_composer=None,
         quality_retry_limit: int = 0,
+        ceo_decision_policy=None,
     ):
         if quality_retry_limit < 0:
             raise ValueError("quality_retry_limit must be greater than or equal to 0.")
@@ -114,6 +116,7 @@ class FullAutoVideoPipeline:
         self.scene_video_composer = scene_video_composer
         self.quality_feedback_parser = QualityFeedbackParser()
         self.quality_retry_limit = quality_retry_limit
+        self.ceo_decision_policy = ceo_decision_policy
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -127,6 +130,8 @@ class FullAutoVideoPipeline:
             quality_feedback,
             quality_retry_count,
             quality_retry_history,
+            ceo_decision,
+            ceo_decision_history,
         ) = self._run_quality_retry_loop(research_result, execution_order)
 
         script_artifact = self.script_artifact_parser.parse(script_result)
@@ -207,6 +212,8 @@ class FullAutoVideoPipeline:
             "quality_feedback": quality_feedback,
             "quality_retry_count": quality_retry_count,
             "quality_retry_history": quality_retry_history,
+            "ceo_decision": ceo_decision,
+            "ceo_decision_history": ceo_decision_history,
             "image_path": image_path,
             "voice_path": voice_path,
             "scene_video_path": scene_video_path,
@@ -225,6 +232,13 @@ class FullAutoVideoPipeline:
         execution_order.append("Reviewer")
         review_result = self.reviewer.execute(script_result)
         quality_feedback = self.quality_feedback_parser.parse(review_result)
+        ceo_decision = self._decide_next_action(
+            quality_feedback=quality_feedback,
+            retry_count=0,
+        )
+        ceo_decision_history = []
+        if ceo_decision is not None:
+            ceo_decision_history.append(ceo_decision.to_dict())
         history = [
             self._quality_retry_history_entry(
                 attempt=0,
@@ -236,7 +250,7 @@ class FullAutoVideoPipeline:
 
         retry_count = 0
         while (
-            quality_feedback.decision == "修正必要"
+            self._should_retry(quality_feedback, ceo_decision)
             and retry_count < self.quality_retry_limit
         ):
             retry_count += 1
@@ -252,6 +266,12 @@ class FullAutoVideoPipeline:
             execution_order.append("Reviewer")
             review_result = self.reviewer.execute(script_result)
             quality_feedback = self.quality_feedback_parser.parse(review_result)
+            ceo_decision = self._decide_next_action(
+                quality_feedback=quality_feedback,
+                retry_count=retry_count,
+            )
+            if ceo_decision is not None:
+                ceo_decision_history.append(ceo_decision.to_dict())
             history.append(
                 self._quality_retry_history_entry(
                     attempt=retry_count,
@@ -267,7 +287,25 @@ class FullAutoVideoPipeline:
             asdict(quality_feedback),
             retry_count,
             history,
+            ceo_decision.to_dict() if ceo_decision is not None else None,
+            ceo_decision_history,
         )
+
+    def _decide_next_action(self, quality_feedback, retry_count: int):
+        if self.ceo_decision_policy is None:
+            return None
+        return self.ceo_decision_policy.decide(
+            stage="review",
+            quality_feedback=quality_feedback,
+            retry_count=retry_count,
+            retry_limit=self.quality_retry_limit,
+            context={},
+        )
+
+    def _should_retry(self, quality_feedback, ceo_decision) -> bool:
+        if self.ceo_decision_policy is None:
+            return quality_feedback.decision == "修正必要"
+        return ceo_decision is not None and ceo_decision.action == ACTION_REVISE
 
     def _build_revision_input(
         self,
