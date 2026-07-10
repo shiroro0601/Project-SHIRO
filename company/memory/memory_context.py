@@ -87,9 +87,13 @@ class MemoryContext:
             return lines
 
         for record in avoid_records:
+            stop_part = ""
+            if record.get("stop_reason"):
+                stop_part = f"stop_reason: {record.get('stop_reason', '')}; "
             lines.append(
                 "- "
                 f"topic: {record.get('topic', '')}; "
+                f"{stop_part}"
                 f"improvement_points: {record.get('improvement_points', '')}; "
                 f"summary: {record.get('summary', '')}"
             )
@@ -137,6 +141,8 @@ class MemoryContext:
         return score is not None and score >= 0.8
 
     def _should_avoid(self, record: dict) -> bool:
+        if record.get("stopped"):
+            return True
         if record.get("quality_decision") == "修正必要":
             return True
         score = self._quality_score(record)

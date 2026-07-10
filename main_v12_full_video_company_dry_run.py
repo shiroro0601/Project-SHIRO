@@ -3,7 +3,7 @@ from dataclasses import asdict
 
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
-from company.core.ceo_decision import ACTION_RESEARCH_AGAIN, ACTION_REVISE
+from company.core.ceo_decision import ACTION_RESEARCH_AGAIN, ACTION_REVISE, ACTION_STOP
 from company.core.employee_role import (
     EditorRole,
     ImageRole,
@@ -101,6 +101,7 @@ class FullAutoVideoPipeline:
         quality_retry_limit: int = 0,
         research_retry_limit: int = 0,
         ceo_decision_policy=None,
+        stop_on_ceo_stop: bool = False,
     ):
         if quality_retry_limit < 0:
             raise ValueError("quality_retry_limit must be greater than or equal to 0.")
@@ -121,6 +122,7 @@ class FullAutoVideoPipeline:
         self.quality_retry_limit = quality_retry_limit
         self.research_retry_limit = research_retry_limit
         self.ceo_decision_policy = ceo_decision_policy
+        self.stop_on_ceo_stop = stop_on_ceo_stop
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -139,6 +141,23 @@ class FullAutoVideoPipeline:
         ) = self._run_text_decision_loop(topic, execution_order)
 
         script_artifact = self.script_artifact_parser.parse(script_result)
+
+        if self._should_stop_production(ceo_decision):
+            return self._build_stopped_result(
+                topic=topic,
+                execution_order=execution_order,
+                research_result=research_result,
+                script_result=script_result,
+                script_artifact=script_artifact,
+                review_result=review_result,
+                quality_feedback=quality_feedback,
+                quality_retry_count=quality_retry_count,
+                quality_retry_history=quality_retry_history,
+                research_retry_count=research_retry_count,
+                research_retry_history=research_retry_history,
+                ceo_decision=ceo_decision,
+                ceo_decision_history=ceo_decision_history,
+            )
 
         scene_assets = self._generate_scene_assets(script_artifact, execution_order)
 
@@ -225,6 +244,52 @@ class FullAutoVideoPipeline:
             "scene_video_path": scene_video_path,
             "video_path": video_path,
             "publish_result": publish_result,
+            "stopped": False,
+            "stop_stage": None,
+            "stop_reason": "",
+            "production_skipped": False,
+        }
+
+    def _build_stopped_result(
+        self,
+        topic: str,
+        execution_order: list[str],
+        research_result: str,
+        script_result: str,
+        script_artifact,
+        review_result: str,
+        quality_feedback: dict,
+        quality_retry_count: int,
+        quality_retry_history: list[dict],
+        research_retry_count: int,
+        research_retry_history: list[dict],
+        ceo_decision,
+        ceo_decision_history: list[dict],
+    ) -> dict:
+        return {
+            "topic": topic,
+            "execution_order": execution_order,
+            "research_result": research_result,
+            "script_result": script_result,
+            "script_artifact": script_artifact,
+            "scene_assets": [],
+            "review_result": review_result,
+            "quality_feedback": quality_feedback,
+            "quality_retry_count": quality_retry_count,
+            "quality_retry_history": quality_retry_history,
+            "research_retry_count": research_retry_count,
+            "research_retry_history": research_retry_history,
+            "ceo_decision": ceo_decision.to_dict() if ceo_decision is not None else None,
+            "ceo_decision_history": ceo_decision_history,
+            "image_path": "",
+            "voice_path": "",
+            "scene_video_path": None,
+            "video_path": "",
+            "publish_result": None,
+            "stopped": True,
+            "stop_stage": self._ceo_stage(ceo_decision) or "review",
+            "stop_reason": self._ceo_reason(ceo_decision),
+            "production_skipped": True,
         }
 
     def _run_text_decision_loop(self, topic: str, execution_order: list[str]):
@@ -398,6 +463,11 @@ class FullAutoVideoPipeline:
             and research_retry_count < self.research_retry_limit
         )
 
+    def _should_stop_production(self, ceo_decision) -> bool:
+        if not self.stop_on_ceo_stop or ceo_decision is None:
+            return False
+        return self._ceo_action(ceo_decision) == ACTION_STOP
+
     def _build_research_retry_input(
         self,
         topic: str,
@@ -430,6 +500,13 @@ class FullAutoVideoPipeline:
         if isinstance(ceo_decision, dict):
             return str(ceo_decision.get("reason", ""))
         return str(getattr(ceo_decision, "reason", ""))
+
+    def _ceo_stage(self, ceo_decision) -> str:
+        if ceo_decision is None:
+            return ""
+        if isinstance(ceo_decision, dict):
+            return str(ceo_decision.get("stage", ""))
+        return str(getattr(ceo_decision, "stage", ""))
 
     def _build_revision_input(
         self,
