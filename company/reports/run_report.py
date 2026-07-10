@@ -26,6 +26,8 @@ class RunReport:
     quality_feedback: dict = field(default_factory=dict)
     quality_retry_count: int = 0
     quality_retry_history: list[dict] = field(default_factory=list)
+    ceo_decision: dict | None = None
+    ceo_decision_history: list[dict] = field(default_factory=list)
 
 
 class RunReportWriter:
@@ -74,6 +76,10 @@ def build_run_report(
         quality_retry_history=[
             dict(item) for item in result.get("quality_retry_history", []) or []
         ],
+        ceo_decision=_optional_dict(result.get("ceo_decision")),
+        ceo_decision_history=[
+            dict(item) for item in result.get("ceo_decision_history", []) or []
+        ],
     )
 
 
@@ -90,3 +96,11 @@ def _object_to_dict(value) -> dict:
     if hasattr(value, "__dict__"):
         return dict(value.__dict__)
     return {}
+
+
+def _optional_dict(value) -> dict | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return dict(value)
+    return _object_to_dict(value)

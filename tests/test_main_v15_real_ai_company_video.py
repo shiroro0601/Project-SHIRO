@@ -230,6 +230,18 @@ def test_parse_args_accepts_quality_retries():
     assert args.quality_retries == 2
 
 
+def test_parse_args_accepts_ceo_decision():
+    args = main_v15.parse_args(["--ceo-decision"])
+
+    assert args.ceo_decision is True
+
+
+def test_parse_args_ceo_decision_default_is_false():
+    args = main_v15.parse_args([])
+
+    assert args.ceo_decision is False
+
+
 def test_parse_args_quality_retries_default_is_zero():
     args = main_v15.parse_args([])
 
@@ -280,6 +292,21 @@ def test_build_company_passes_quality_retry_limit():
     )
 
     assert company.quality_retry_limit == 2
+
+
+def test_build_company_accepts_ceo_decision_policy():
+    policy = main_v15.CEODecisionPolicy()
+
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        ceo_decision_policy=policy,
+    )
+
+    assert company.ceo_decision_policy is policy
 
 
 def test_run_real_ai_company_video_with_fakes():
@@ -753,6 +780,108 @@ def test_main_passes_quality_retries_to_runner(monkeypatch, capsys):
     assert "- limit: 2" in captured.out
     assert "- retries used: 1" in captured.out
     assert "- final decision: 合格" in captured.out
+
+
+def test_main_passes_ceo_decision_policy_to_runner(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+    ):
+        calls.append(ceo_decision_policy)
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {
+                "evaluation": "良い台本です。",
+                "improvement_points": "なし",
+                "decision": "合格",
+                "score": 1.0,
+            },
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "ceo_decision": {
+                "action": "proceed",
+                "reason": "Reviewer approved the script.",
+                "stage": "review",
+                "quality_decision": "合格",
+                "quality_score": 1.0,
+                "retry_count": 0,
+                "metadata": {},
+            },
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--ceo-decision", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert isinstance(calls[0], main_v15.CEODecisionPolicy)
+    assert "CEO decision:" in captured.out
+    assert "- action: proceed" in captured.out
+    assert "- quality decision: 合格" in captured.out
+
+
+def test_main_can_combine_ceo_decision_and_quality_retries(monkeypatch):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        quality_retry_limit=0,
+        ceo_decision_policy=None,
+    ):
+        calls.append(
+            {
+                "quality_retry_limit": quality_retry_limit,
+                "ceo_decision_policy": ceo_decision_policy,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "ceo_decision": None,
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--ceo-decision", "--quality-retries", "2", "--no-report"])
+
+    assert calls[0]["quality_retry_limit"] == 2
+    assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
 
 
 def test_main_memory_loop_can_combine_with_quality_retries(monkeypatch):

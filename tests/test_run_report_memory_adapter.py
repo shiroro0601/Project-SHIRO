@@ -45,6 +45,19 @@ def make_report() -> RunReport:
                 "improvement_points": "なし",
             },
         ],
+        ceo_decision={
+            "action": "proceed",
+            "reason": "Reviewer approved the script.",
+            "stage": "review",
+            "quality_decision": "合格",
+            "quality_score": 1.0,
+            "retry_count": 1,
+            "metadata": {},
+        },
+        ceo_decision_history=[
+            {"action": "revise"},
+            {"action": "proceed"},
+        ],
     )
 
 
@@ -74,6 +87,7 @@ def test_run_report_memory_adapter_summary_contains_topic_and_media_mode():
     assert "2 scenes / 2 assets" in record["summary"]
     assert "品質判定: 合格" in record["summary"]
     assert "修正回数: 1回" in record["summary"]
+    assert "CEO判断: proceed" in record["summary"]
 
 
 def test_run_report_memory_adapter_adds_quality_fields():
@@ -88,3 +102,10 @@ def test_run_report_memory_adapter_adds_quality_retry_count():
     record = RunReportMemoryAdapter().to_memory_record(make_report())
 
     assert record["quality_retry_count"] == 1
+
+
+def test_run_report_memory_adapter_adds_ceo_decision_fields():
+    record = RunReportMemoryAdapter().to_memory_record(make_report())
+
+    assert record["ceo_action"] == "proceed"
+    assert record["ceo_reason"] == "Reviewer approved the script."

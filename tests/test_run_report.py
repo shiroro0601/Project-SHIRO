@@ -34,6 +34,8 @@ def test_run_report_can_be_created():
     assert report.quality_feedback == {}
     assert report.quality_retry_count == 0
     assert report.quality_retry_history == []
+    assert report.ceo_decision is None
+    assert report.ceo_decision_history == []
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -121,6 +123,35 @@ def test_build_run_report_converts_result_dict_to_report():
                 "improvement_points": "なし",
             },
         ],
+        "ceo_decision": {
+            "action": "proceed",
+            "reason": "Reviewer approved the script.",
+            "stage": "review",
+            "quality_decision": "合格",
+            "quality_score": 1.0,
+            "retry_count": 1,
+            "metadata": {},
+        },
+        "ceo_decision_history": [
+            {
+                "action": "revise",
+                "reason": "Reviewer requested revision and retry remains.",
+                "stage": "review",
+                "quality_decision": "修正必要",
+                "quality_score": 0.0,
+                "retry_count": 0,
+                "metadata": {},
+            },
+            {
+                "action": "proceed",
+                "reason": "Reviewer approved the script.",
+                "stage": "review",
+                "quality_decision": "合格",
+                "quality_score": 1.0,
+                "retry_count": 1,
+                "metadata": {},
+            },
+        ],
     }
 
     report = build_run_report(
@@ -170,4 +201,17 @@ def test_build_run_report_converts_result_dict_to_report():
             "score": 1.0,
             "improvement_points": "なし",
         },
+    ]
+    assert report.ceo_decision == {
+        "action": "proceed",
+        "reason": "Reviewer approved the script.",
+        "stage": "review",
+        "quality_decision": "合格",
+        "quality_score": 1.0,
+        "retry_count": 1,
+        "metadata": {},
+    }
+    assert [item["action"] for item in report.ceo_decision_history] == [
+        "revise",
+        "proceed",
     ]
