@@ -225,6 +225,28 @@ def test_writer_direct_string_input():
     assert "入力された調査結果だけを使う" in prompt
 
 
+def test_writer_role_prompt_handles_quality_retry_revision_input():
+    provider = FakeProvider(response="script")
+    role = WriterRole(provider=provider)
+    revision_input = (
+        "以下の調査結果だけを使って台本を修正してください。\n\n"
+        "【調査結果】\n猫はひげで幅を測る\n\n"
+        "【前回の台本】\n猫の台本 v1\n\n"
+        "【Reviewerの改善点】\n冒頭の引きを強くする\n\n"
+        "【Reviewerの評価】\n構成が弱いです。\n"
+    )
+
+    result = role.execute(revision_input)
+
+    assert result == "script"
+    prompt = provider.prompts[0]
+    assert revision_input in prompt
+    assert "新規台本ではなく修正版として処理してください。" in prompt
+    assert "改善点を反映" in prompt
+    assert "前回と同じ問題を繰り返さないでください。" in prompt
+    assert "【タイトル】【ナレーション】【画像指示】の形式を維持" in prompt
+
+
 def test_writer_role_prefers_research_result_over_theme():
     provider = FakeProvider(response="script")
     role = WriterRole(provider=provider)

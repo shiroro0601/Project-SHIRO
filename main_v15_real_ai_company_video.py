@@ -102,6 +102,12 @@ def parse_args(argv=None):
         action="store_true",
         help="Enable both --use-memory and --save-memory for loop verification.",
     )
+    parser.add_argument(
+        "--quality-retries",
+        type=int,
+        default=0,
+        help="Retry script writing when reviewer quality decision is 修正必要.",
+    )
     return parser.parse_args(argv)
 
 
@@ -125,6 +131,7 @@ def build_company(
     publisher=None,
     real_media: bool = False,
     memory_context=None,
+    quality_retry_limit: int = 0,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider, memory_context=memory_context)
@@ -145,6 +152,7 @@ def build_company(
         voice_generator=voice_generator,
         scene_video_composer=scene_video_composer or MoviePySceneVideoComposer(),
         publisher=publisher,
+        quality_retry_limit=quality_retry_limit,
     )
 
 
@@ -157,6 +165,7 @@ def run_real_ai_company_video(
     publisher=None,
     real_media: bool = False,
     memory_context=None,
+    quality_retry_limit: int = 0,
 ):
     company = build_company(
         provider=provider,
@@ -166,6 +175,7 @@ def run_real_ai_company_video(
         publisher=publisher,
         real_media=real_media,
         memory_context=memory_context,
+        quality_retry_limit=quality_retry_limit,
     )
     return company.run(topic)
 
@@ -206,6 +216,15 @@ def print_result(result: dict) -> None:
 
     print("\npublish_result:")
     pprint(result.get("publish_result"))
+
+
+def print_quality_retry_status(result: dict, limit: int) -> None:
+    quality_feedback = result.get("quality_feedback", {}) or {}
+    print("Quality retry:")
+    print(f"- limit: {limit}")
+    print(f"- retries used: {result.get('quality_retry_count', 0)}")
+    print(f"- final decision: {quality_feedback.get('decision', '')}")
+    print(f"- final score: {quality_feedback.get('score', '')}")
 
 
 def write_run_report(
@@ -316,6 +335,8 @@ def main(
     if args.memory_loop:
         args.use_memory = True
         args.save_memory = True
+    if args.quality_retries < 0:
+        raise ValueError("--quality-retries must be greater than or equal to 0")
     if args.check_services:
         checker = service_health_checker or ServiceHealthChecker()
         print_service_statuses(checker.check_all())
@@ -337,6 +358,8 @@ def main(
         if args.real_media:
             ensure_services_ready(service_health_checker)
         run_kwargs = {"real_media": args.real_media}
+        if args.quality_retries:
+            run_kwargs["quality_retry_limit"] = args.quality_retries
         if memory_context is not None:
             run_kwargs["memory_context"] = memory_context
         result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
@@ -345,6 +368,7 @@ def main(
         raise
 
     print_result(result)
+    print_quality_retry_status(result, args.quality_retries)
     report = build_run_report(
         topic=str(result.get("topic", DEFAULT_TOPIC)),
         media_mode=mode,

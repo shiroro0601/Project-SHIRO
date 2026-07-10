@@ -224,6 +224,18 @@ def test_parse_args_accepts_memory_loop_mode():
     assert args.memory_loop is True
 
 
+def test_parse_args_accepts_quality_retries():
+    args = main_v15.parse_args(["--quality-retries", "2"])
+
+    assert args.quality_retries == 2
+
+
+def test_parse_args_quality_retries_default_is_zero():
+    args = main_v15.parse_args([])
+
+    assert args.quality_retries == 0
+
+
 def test_count_run_reports_returns_zero_without_run_reports():
     memory = FakeMemory()
 
@@ -257,6 +269,19 @@ def test_build_company_real_media_with_fakes_does_not_require_external_services(
     assert company is not None
 
 
+def test_build_company_passes_quality_retry_limit():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        quality_retry_limit=2,
+    )
+
+    assert company.quality_retry_limit == 2
+
+
 def test_run_real_ai_company_video_with_fakes():
     provider = FakeProvider()
     image_generator = FakeImageGenerator()
@@ -271,6 +296,7 @@ def test_run_real_ai_company_video_with_fakes():
         scene_video_composer=composer,
         publisher=FakePublisher(),
         real_media=True,
+        quality_retry_limit=1,
     )
 
     assert result["topic"] == "猫の意外な雑学"
@@ -291,6 +317,7 @@ def test_run_real_ai_company_video_with_fakes():
     assert result["scene_video_path"] == "fake_final_video.mp4"
     assert result["video_path"] == "fake_final_video.mp4"
     assert result["publish_result"]["status"] == "dry_run"
+    assert result["quality_retry_count"] == 0
 
 
 def test_check_services_mode_does_not_run_company(capsys):
@@ -660,6 +687,138 @@ def test_main_memory_loop_enables_use_memory_and_save_memory(monkeypatch, capsys
     assert "- after run_reports: 2" in captured.out
     assert "- quality decision: 合格" in captured.out
     assert "- improvement points: 冒頭の引きを強くする" in captured.out
+
+
+def test_main_passes_quality_retries_to_runner(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        quality_retry_limit=0,
+    ):
+        calls.append(
+            {
+                "topic": topic,
+                "real_media": real_media,
+                "quality_retry_limit": quality_retry_limit,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": (
+                "【評価】\n"
+                "分かりやすい台本です。\n\n"
+                "【改善点】\n"
+                "なし\n\n"
+                "【判定】\n"
+                "合格"
+            ),
+            "quality_feedback": {
+                "evaluation": "分かりやすい台本です。",
+                "improvement_points": "なし",
+                "decision": "合格",
+                "score": 1.0,
+            },
+            "quality_retry_count": 1,
+            "quality_retry_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--quality-retries", "2", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert calls == [
+        {
+            "topic": main_v15.DEFAULT_TOPIC,
+            "real_media": False,
+            "quality_retry_limit": 2,
+        }
+    ]
+    assert "Quality retry:" in captured.out
+    assert "- limit: 2" in captured.out
+    assert "- retries used: 1" in captured.out
+    assert "- final decision: 合格" in captured.out
+
+
+def test_main_memory_loop_can_combine_with_quality_retries(monkeypatch):
+    memory = FakeMemory()
+    retriever = FakeMemoryRetriever()
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        memory_context=None,
+        quality_retry_limit=0,
+    ):
+        calls.append(
+            {
+                "memory_context": memory_context,
+                "quality_retry_limit": quality_retry_limit,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": (
+                "【評価】\n"
+                "分かりやすい台本です。\n\n"
+                "【改善点】\n"
+                "なし\n\n"
+                "【判定】\n"
+                "合格"
+            ),
+            "quality_feedback": {
+                "evaluation": "分かりやすい台本です。",
+                "improvement_points": "なし",
+                "decision": "合格",
+                "score": 1.0,
+            },
+            "quality_retry_count": 1,
+            "quality_retry_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        ["--memory-loop", "--quality-retries", "2", "--no-report"],
+        memory=memory,
+        memory_retriever=retriever,
+    )
+
+    assert calls == [
+        {
+            "memory_context": retriever.context,
+            "quality_retry_limit": 2,
+        }
+    ]
 
 
 def test_real_media_checks_services_before_running(monkeypatch):

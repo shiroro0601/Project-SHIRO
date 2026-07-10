@@ -30,6 +30,21 @@ def make_report() -> RunReport:
             "decision": "合格",
             "score": 1.0,
         },
+        quality_retry_count=1,
+        quality_retry_history=[
+            {
+                "attempt": 0,
+                "decision": "修正必要",
+                "score": 0.0,
+                "improvement_points": "冒頭の引きを強くする",
+            },
+            {
+                "attempt": 1,
+                "decision": "合格",
+                "score": 1.0,
+                "improvement_points": "なし",
+            },
+        ],
     )
 
 
@@ -58,6 +73,7 @@ def test_run_report_memory_adapter_summary_contains_topic_and_media_mode():
     assert "placeholder mode" in record["summary"]
     assert "2 scenes / 2 assets" in record["summary"]
     assert "品質判定: 合格" in record["summary"]
+    assert "修正回数: 1回" in record["summary"]
 
 
 def test_run_report_memory_adapter_adds_quality_fields():
@@ -66,3 +82,9 @@ def test_run_report_memory_adapter_adds_quality_fields():
     assert record["quality_decision"] == "合格"
     assert record["quality_score"] == 1.0
     assert record["improvement_points"] == "冒頭の引きを強くする"
+
+
+def test_run_report_memory_adapter_adds_quality_retry_count():
+    record = RunReportMemoryAdapter().to_memory_record(make_report())
+
+    assert record["quality_retry_count"] == 1
