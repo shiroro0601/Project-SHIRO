@@ -236,6 +236,18 @@ def test_parse_args_accepts_ceo_decision():
     assert args.ceo_decision is True
 
 
+def test_parse_args_accepts_research_retries():
+    args = main_v15.parse_args(["--research-retries", "1"])
+
+    assert args.research_retries == 1
+
+
+def test_parse_args_research_retries_default_is_zero():
+    args = main_v15.parse_args([])
+
+    assert args.research_retries == 0
+
+
 def test_parse_args_ceo_decision_default_is_false():
     args = main_v15.parse_args([])
 
@@ -307,6 +319,19 @@ def test_build_company_accepts_ceo_decision_policy():
     )
 
     assert company.ceo_decision_policy is policy
+
+
+def test_build_company_passes_research_retry_limit():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        research_retry_limit=1,
+    )
+
+    assert company.research_retry_limit == 1
 
 
 def test_run_real_ai_company_video_with_fakes():
@@ -881,6 +906,170 @@ def test_main_can_combine_ceo_decision_and_quality_retries(monkeypatch):
     main_v15.main(["--ceo-decision", "--quality-retries", "2", "--no-report"])
 
     assert calls[0]["quality_retry_limit"] == 2
+    assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
+
+
+def test_main_passes_research_retries_to_runner(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        research_retry_limit=0,
+        ceo_decision_policy=None,
+    ):
+        calls.append(
+            {
+                "research_retry_limit": research_retry_limit,
+                "ceo_decision_policy": ceo_decision_policy,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 1,
+            "research_retry_history": [],
+            "ceo_decision": None,
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--ceo-decision", "--research-retries", "1", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert calls[0]["research_retry_limit"] == 1
+    assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
+    assert "Research retry:" in captured.out
+    assert "- limit: 1" in captured.out
+    assert "- retries used: 1" in captured.out
+    assert "- final research available: yes" in captured.out
+
+
+def test_main_warns_when_research_retries_without_ceo_decision(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        research_retry_limit=0,
+    ):
+        calls.append(research_retry_limit)
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": None,
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--research-retries", "1", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert calls == [1]
+    assert "Research retries require --ceo-decision" in captured.out
+
+
+def test_main_can_combine_memory_loop_quality_and_research_retries(monkeypatch):
+    memory = FakeMemory()
+    retriever = FakeMemoryRetriever()
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        memory_context=None,
+        quality_retry_limit=0,
+        research_retry_limit=0,
+        ceo_decision_policy=None,
+    ):
+        calls.append(
+            {
+                "memory_context": memory_context,
+                "quality_retry_limit": quality_retry_limit,
+                "research_retry_limit": research_retry_limit,
+                "ceo_decision_policy": ceo_decision_policy,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 1,
+            "research_retry_history": [],
+            "ceo_decision": None,
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        [
+            "--memory-loop",
+            "--ceo-decision",
+            "--quality-retries",
+            "2",
+            "--research-retries",
+            "1",
+            "--no-report",
+        ],
+        memory=memory,
+        memory_retriever=retriever,
+    )
+
+    assert calls[0]["memory_context"] is retriever.context
+    assert calls[0]["quality_retry_limit"] == 2
+    assert calls[0]["research_retry_limit"] == 1
     assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
 
 

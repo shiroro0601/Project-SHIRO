@@ -73,7 +73,11 @@ def test_ceo_decision_research_missing_requests_research_again():
     decision = CEODecisionPolicy().decide(
         stage="review",
         quality_feedback=feedback("合格", 1.0),
-        context={"research_missing": True},
+        context={
+            "research_missing": True,
+            "research_retry_count": 0,
+            "research_retry_limit": 1,
+        },
     )
 
     assert decision.action == ACTION_RESEARCH_AGAIN
@@ -86,7 +90,26 @@ def test_ceo_decision_research_missing_has_priority():
         quality_feedback=feedback("修正必要", 0.0),
         retry_count=0,
         retry_limit=2,
-        context={"research_missing": True},
+        context={
+            "research_missing": True,
+            "research_retry_count": 0,
+            "research_retry_limit": 1,
+        },
     )
 
     assert decision.action == ACTION_RESEARCH_AGAIN
+
+
+def test_ceo_decision_research_missing_at_limit_stops():
+    decision = CEODecisionPolicy().decide(
+        stage="review",
+        quality_feedback=feedback("合格", 1.0),
+        context={
+            "research_missing": True,
+            "research_retry_count": 1,
+            "research_retry_limit": 1,
+        },
+    )
+
+    assert decision.action == ACTION_STOP
+    assert "research retry limit" in decision.reason

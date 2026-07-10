@@ -3,7 +3,7 @@ from dataclasses import asdict
 
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
-from company.core.ceo_decision import ACTION_REVISE
+from company.core.ceo_decision import ACTION_RESEARCH_AGAIN, ACTION_REVISE
 from company.core.employee_role import (
     EditorRole,
     ImageRole,
@@ -99,10 +99,13 @@ class FullAutoVideoPipeline:
         script_artifact_parser=None,
         scene_video_composer=None,
         quality_retry_limit: int = 0,
+        research_retry_limit: int = 0,
         ceo_decision_policy=None,
     ):
         if quality_retry_limit < 0:
             raise ValueError("quality_retry_limit must be greater than or equal to 0.")
+        if research_retry_limit < 0:
+            raise ValueError("research_retry_limit must be greater than or equal to 0.")
 
         text_provider = text_provider or DryRunTextProvider()
         self.researcher = researcher or ResearchRole(provider=text_provider)
@@ -116,23 +119,24 @@ class FullAutoVideoPipeline:
         self.scene_video_composer = scene_video_composer
         self.quality_feedback_parser = QualityFeedbackParser()
         self.quality_retry_limit = quality_retry_limit
+        self.research_retry_limit = research_retry_limit
         self.ceo_decision_policy = ceo_decision_policy
 
     def run(self, topic: str):
         execution_order: list[str] = []
 
-        execution_order.append("Researcher")
-        research_result = self.researcher.execute(topic)
-
         (
+            research_result,
             script_result,
             review_result,
             quality_feedback,
             quality_retry_count,
             quality_retry_history,
+            research_retry_count,
+            research_retry_history,
             ceo_decision,
             ceo_decision_history,
-        ) = self._run_quality_retry_loop(research_result, execution_order)
+        ) = self._run_text_decision_loop(topic, execution_order)
 
         script_artifact = self.script_artifact_parser.parse(script_result)
 
@@ -212,7 +216,9 @@ class FullAutoVideoPipeline:
             "quality_feedback": quality_feedback,
             "quality_retry_count": quality_retry_count,
             "quality_retry_history": quality_retry_history,
-            "ceo_decision": ceo_decision,
+            "research_retry_count": research_retry_count,
+            "research_retry_history": research_retry_history,
+            "ceo_decision": ceo_decision.to_dict() if ceo_decision is not None else None,
             "ceo_decision_history": ceo_decision_history,
             "image_path": image_path,
             "voice_path": voice_path,
@@ -221,10 +227,73 @@ class FullAutoVideoPipeline:
             "publish_result": publish_result,
         }
 
+    def _run_text_decision_loop(self, topic: str, execution_order: list[str]):
+        research_retry_count = 0
+        total_quality_retry_count = 0
+        quality_retry_history = []
+        research_retry_history = []
+        ceo_decision_history = []
+        research_input = topic
+
+        while True:
+            execution_order.append("Researcher")
+            research_result = self.researcher.execute(research_input)
+
+            (
+                script_result,
+                review_result,
+                quality_feedback,
+                quality_retry_count,
+                cycle_quality_history,
+                ceo_decision,
+                cycle_ceo_history,
+            ) = self._run_quality_retry_loop(
+                research_result,
+                execution_order,
+                research_retry_count=research_retry_count,
+            )
+
+            total_quality_retry_count += quality_retry_count
+            quality_retry_history.extend(cycle_quality_history)
+            ceo_decision_history.extend(cycle_ceo_history)
+            research_retry_history.append(
+                {
+                    "attempt": research_retry_count,
+                    "input": research_input,
+                    "research_result": research_result,
+                    "ceo_action": self._ceo_action(ceo_decision),
+                    "ceo_reason": self._ceo_reason(ceo_decision),
+                }
+            )
+
+            if not self._should_research_retry(ceo_decision, research_retry_count):
+                break
+
+            research_retry_count += 1
+            research_input = self._build_research_retry_input(
+                topic=topic,
+                research_result=research_result,
+                ceo_decision=ceo_decision,
+            )
+
+        return (
+            research_result,
+            script_result,
+            review_result,
+            quality_feedback,
+            total_quality_retry_count,
+            quality_retry_history,
+            research_retry_count,
+            research_retry_history,
+            ceo_decision,
+            ceo_decision_history,
+        )
+
     def _run_quality_retry_loop(
         self,
         research_result: str,
         execution_order: list[str],
+        research_retry_count: int = 0,
     ):
         execution_order.append("Writer")
         script_result = self.writer.execute(research_result)
@@ -235,6 +304,8 @@ class FullAutoVideoPipeline:
         ceo_decision = self._decide_next_action(
             quality_feedback=quality_feedback,
             retry_count=0,
+            research_result=research_result,
+            research_retry_count=research_retry_count,
         )
         ceo_decision_history = []
         if ceo_decision is not None:
@@ -269,6 +340,8 @@ class FullAutoVideoPipeline:
             ceo_decision = self._decide_next_action(
                 quality_feedback=quality_feedback,
                 retry_count=retry_count,
+                research_result=research_result,
+                research_retry_count=research_retry_count,
             )
             if ceo_decision is not None:
                 ceo_decision_history.append(ceo_decision.to_dict())
@@ -287,11 +360,17 @@ class FullAutoVideoPipeline:
             asdict(quality_feedback),
             retry_count,
             history,
-            ceo_decision.to_dict() if ceo_decision is not None else None,
+            ceo_decision,
             ceo_decision_history,
         )
 
-    def _decide_next_action(self, quality_feedback, retry_count: int):
+    def _decide_next_action(
+        self,
+        quality_feedback,
+        retry_count: int,
+        research_result: str,
+        research_retry_count: int,
+    ):
         if self.ceo_decision_policy is None:
             return None
         return self.ceo_decision_policy.decide(
@@ -299,13 +378,58 @@ class FullAutoVideoPipeline:
             quality_feedback=quality_feedback,
             retry_count=retry_count,
             retry_limit=self.quality_retry_limit,
-            context={},
+            context={
+                "research_missing": not str(research_result or "").strip(),
+                "research_retry_count": research_retry_count,
+                "research_retry_limit": self.research_retry_limit,
+            },
         )
 
     def _should_retry(self, quality_feedback, ceo_decision) -> bool:
         if self.ceo_decision_policy is None:
             return quality_feedback.decision == "修正必要"
         return ceo_decision is not None and ceo_decision.action == ACTION_REVISE
+
+    def _should_research_retry(self, ceo_decision, research_retry_count: int) -> bool:
+        if self.ceo_decision_policy is None or ceo_decision is None:
+            return False
+        return (
+            ceo_decision.action == ACTION_RESEARCH_AGAIN
+            and research_retry_count < self.research_retry_limit
+        )
+
+    def _build_research_retry_input(
+        self,
+        topic: str,
+        research_result: str,
+        ceo_decision,
+    ) -> str:
+        return (
+            "以下のテーマを再調査してください。\n\n"
+            "【テーマ】\n"
+            f"{topic}\n\n"
+            "【前回の調査結果】\n"
+            f"{research_result}\n\n"
+            "【再調査理由】\n"
+            f"{self._ceo_reason(ceo_decision)}\n\n"
+            "不足している情報を補い、\n"
+            "今回のテーマから逸脱せず、\n"
+            "より具体的で検証しやすい情報を出してください。"
+        )
+
+    def _ceo_action(self, ceo_decision) -> str:
+        if ceo_decision is None:
+            return ""
+        if isinstance(ceo_decision, dict):
+            return str(ceo_decision.get("action", ""))
+        return str(getattr(ceo_decision, "action", ""))
+
+    def _ceo_reason(self, ceo_decision) -> str:
+        if ceo_decision is None:
+            return ""
+        if isinstance(ceo_decision, dict):
+            return str(ceo_decision.get("reason", ""))
+        return str(getattr(ceo_decision, "reason", ""))
 
     def _build_revision_input(
         self,
