@@ -36,6 +36,18 @@ class CEODecisionPolicy:
         quality_score = self._quality_score(quality_feedback)
 
         if context.get("research_missing") is True:
+            research_retry_count = int(context.get("research_retry_count", 0) or 0)
+            research_retry_limit = int(context.get("research_retry_limit", 0) or 0)
+            if research_retry_count >= research_retry_limit:
+                return CEODecision(
+                    action=ACTION_STOP,
+                    reason="Research result is missing but research retry limit was reached.",
+                    stage=stage,
+                    quality_decision=quality_decision,
+                    quality_score=quality_score,
+                    retry_count=retry_count,
+                    metadata=dict(context),
+                )
             return CEODecision(
                 action=ACTION_RESEARCH_AGAIN,
                 reason="Research result is missing and should be regenerated.",

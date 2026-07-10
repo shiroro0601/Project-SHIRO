@@ -10,6 +10,7 @@ class RunReportMemoryAdapter:
         quality_score = quality_feedback.get("score", 0.5)
         improvement_points = quality_feedback.get("improvement_points", "")
         quality_retry_count = getattr(report, "quality_retry_count", 0)
+        research_retry_count = getattr(report, "research_retry_count", 0)
         ceo_decision = getattr(report, "ceo_decision", None) or {}
         ceo_action = ceo_decision.get("action", "")
         ceo_reason = ceo_decision.get("reason", "")
@@ -19,7 +20,8 @@ class RunReportMemoryAdapter:
         )
         if quality_decision:
             summary += f"品質判定: {quality_decision}。"
-        summary += f"修正回数: {quality_retry_count}回。"
+        summary += f"Writer修正回数: {quality_retry_count}回。"
+        summary += f"再調査回数: {research_retry_count}回。"
         if ceo_action:
             summary += f"CEO判断: {ceo_action}。"
         return {
@@ -37,6 +39,7 @@ class RunReportMemoryAdapter:
             "quality_score": quality_score,
             "improvement_points": improvement_points,
             "quality_retry_count": quality_retry_count,
+            "research_retry_count": research_retry_count,
             "ceo_action": ceo_action,
             "ceo_reason": ceo_reason,
             "summary": summary,

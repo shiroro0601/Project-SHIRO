@@ -114,6 +114,12 @@ def parse_args(argv=None):
         action="store_true",
         help="Enable rule-based CEO decision policy for review stage decisions.",
     )
+    parser.add_argument(
+        "--research-retries",
+        type=int,
+        default=0,
+        help="Retry ResearchRole when CEO decision requests research_again.",
+    )
     return parser.parse_args(argv)
 
 
@@ -138,6 +144,7 @@ def build_company(
     real_media: bool = False,
     memory_context=None,
     quality_retry_limit: int = 0,
+    research_retry_limit: int = 0,
     ceo_decision_policy=None,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
@@ -160,6 +167,7 @@ def build_company(
         scene_video_composer=scene_video_composer or MoviePySceneVideoComposer(),
         publisher=publisher,
         quality_retry_limit=quality_retry_limit,
+        research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
     )
 
@@ -174,6 +182,7 @@ def run_real_ai_company_video(
     real_media: bool = False,
     memory_context=None,
     quality_retry_limit: int = 0,
+    research_retry_limit: int = 0,
     ceo_decision_policy=None,
 ):
     company = build_company(
@@ -185,6 +194,7 @@ def run_real_ai_company_video(
         real_media=real_media,
         memory_context=memory_context,
         quality_retry_limit=quality_retry_limit,
+        research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
     )
     return company.run(topic)
@@ -235,6 +245,14 @@ def print_quality_retry_status(result: dict, limit: int) -> None:
     print(f"- retries used: {result.get('quality_retry_count', 0)}")
     print(f"- final decision: {quality_feedback.get('decision', '')}")
     print(f"- final score: {quality_feedback.get('score', '')}")
+
+
+def print_research_retry_status(result: dict, limit: int) -> None:
+    research_result = str(result.get("research_result", "") or "")
+    print("Research retry:")
+    print(f"- limit: {limit}")
+    print(f"- retries used: {result.get('research_retry_count', 0)}")
+    print(f"- final research available: {'yes' if research_result.strip() else 'no'}")
 
 
 def print_ceo_decision_status(result: dict) -> None:
@@ -360,6 +378,8 @@ def main(
         args.save_memory = True
     if args.quality_retries < 0:
         raise ValueError("--quality-retries must be greater than or equal to 0")
+    if args.research_retries < 0:
+        raise ValueError("--research-retries must be greater than or equal to 0")
     if args.check_services:
         checker = service_health_checker or ServiceHealthChecker()
         print_service_statuses(checker.check_all())
@@ -383,6 +403,10 @@ def main(
         run_kwargs = {"real_media": args.real_media}
         if args.quality_retries:
             run_kwargs["quality_retry_limit"] = args.quality_retries
+        if args.research_retries:
+            run_kwargs["research_retry_limit"] = args.research_retries
+            if not args.ceo_decision:
+                print("Research retries require --ceo-decision and will not run without it.")
         if args.ceo_decision:
             run_kwargs["ceo_decision_policy"] = CEODecisionPolicy()
         if memory_context is not None:
@@ -393,6 +417,7 @@ def main(
         raise
 
     print_result(result)
+    print_research_retry_status(result, args.research_retries)
     print_quality_retry_status(result, args.quality_retries)
     print_ceo_decision_status(result)
     report = build_run_report(

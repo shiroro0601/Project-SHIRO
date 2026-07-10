@@ -34,6 +34,8 @@ def test_run_report_can_be_created():
     assert report.quality_feedback == {}
     assert report.quality_retry_count == 0
     assert report.quality_retry_history == []
+    assert report.research_retry_count == 0
+    assert report.research_retry_history == []
     assert report.ceo_decision is None
     assert report.ceo_decision_history == []
 
@@ -123,6 +125,23 @@ def test_build_run_report_converts_result_dict_to_report():
                 "improvement_points": "なし",
             },
         ],
+        "research_retry_count": 1,
+        "research_retry_history": [
+            {
+                "attempt": 0,
+                "input": "猫の意外な雑学",
+                "research_result": "",
+                "ceo_action": "research_again",
+                "ceo_reason": "Research result is missing.",
+            },
+            {
+                "attempt": 1,
+                "input": "再調査入力",
+                "research_result": "research",
+                "ceo_action": "proceed",
+                "ceo_reason": "Reviewer approved the script.",
+            },
+        ],
         "ceo_decision": {
             "action": "proceed",
             "reason": "Reviewer approved the script.",
@@ -200,6 +219,23 @@ def test_build_run_report_converts_result_dict_to_report():
             "decision": "合格",
             "score": 1.0,
             "improvement_points": "なし",
+        },
+    ]
+    assert report.research_retry_count == 1
+    assert report.research_retry_history == [
+        {
+            "attempt": 0,
+            "input": "猫の意外な雑学",
+            "research_result": "",
+            "ceo_action": "research_again",
+            "ceo_reason": "Research result is missing.",
+        },
+        {
+            "attempt": 1,
+            "input": "再調査入力",
+            "research_result": "research",
+            "ceo_action": "proceed",
+            "ceo_reason": "Reviewer approved the script.",
         },
     ]
     assert report.ceo_decision == {

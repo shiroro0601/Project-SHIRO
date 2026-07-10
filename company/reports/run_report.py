@@ -26,6 +26,8 @@ class RunReport:
     quality_feedback: dict = field(default_factory=dict)
     quality_retry_count: int = 0
     quality_retry_history: list[dict] = field(default_factory=list)
+    research_retry_count: int = 0
+    research_retry_history: list[dict] = field(default_factory=list)
     ceo_decision: dict | None = None
     ceo_decision_history: list[dict] = field(default_factory=list)
 
@@ -75,6 +77,10 @@ def build_run_report(
         quality_retry_count=int(result.get("quality_retry_count", 0) or 0),
         quality_retry_history=[
             dict(item) for item in result.get("quality_retry_history", []) or []
+        ],
+        research_retry_count=int(result.get("research_retry_count", 0) or 0),
+        research_retry_history=[
+            dict(item) for item in result.get("research_retry_history", []) or []
         ],
         ceo_decision=_optional_dict(result.get("ceo_decision")),
         ceo_decision_history=[

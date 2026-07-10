@@ -45,6 +45,23 @@ def make_report() -> RunReport:
                 "improvement_points": "なし",
             },
         ],
+        research_retry_count=1,
+        research_retry_history=[
+            {
+                "attempt": 0,
+                "input": "猫の意外な雑学",
+                "research_result": "",
+                "ceo_action": "research_again",
+                "ceo_reason": "Research result is missing.",
+            },
+            {
+                "attempt": 1,
+                "input": "再調査入力",
+                "research_result": "research",
+                "ceo_action": "proceed",
+                "ceo_reason": "Reviewer approved the script.",
+            },
+        ],
         ceo_decision={
             "action": "proceed",
             "reason": "Reviewer approved the script.",
@@ -86,7 +103,8 @@ def test_run_report_memory_adapter_summary_contains_topic_and_media_mode():
     assert "placeholder mode" in record["summary"]
     assert "2 scenes / 2 assets" in record["summary"]
     assert "品質判定: 合格" in record["summary"]
-    assert "修正回数: 1回" in record["summary"]
+    assert "Writer修正回数: 1回" in record["summary"]
+    assert "再調査回数: 1回" in record["summary"]
     assert "CEO判断: proceed" in record["summary"]
 
 
@@ -102,6 +120,12 @@ def test_run_report_memory_adapter_adds_quality_retry_count():
     record = RunReportMemoryAdapter().to_memory_record(make_report())
 
     assert record["quality_retry_count"] == 1
+
+
+def test_run_report_memory_adapter_adds_research_retry_count():
+    record = RunReportMemoryAdapter().to_memory_record(make_report())
+
+    assert record["research_retry_count"] == 1
 
 
 def test_run_report_memory_adapter_adds_ceo_decision_fields():
