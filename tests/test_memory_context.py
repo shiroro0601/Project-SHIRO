@@ -184,3 +184,23 @@ def test_memory_context_without_improvement_points_has_empty_message():
     prompt_text = context.to_prompt_text()
 
     assert "- 過去の改善点はありません。" in prompt_text
+
+
+def test_memory_context_stop_reason_goes_to_avoid_patterns():
+    context = MemoryContext(
+        records=[
+            {
+                "topic": "猫の雑学",
+                "stopped": True,
+                "stop_reason": "Retry limit reached.",
+                "improvement_points": "冒頭を改善",
+                "summary": "CEO判断によりreview工程で制作停止。",
+            }
+        ]
+    )
+
+    prompt_text = context.to_prompt_text()
+
+    assert "避けること:" in prompt_text
+    assert "topic: 猫の雑学; stop_reason: Retry limit reached." in prompt_text
+    assert "improvement_points: 冒頭を改善" in prompt_text

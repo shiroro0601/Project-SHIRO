@@ -14,6 +14,10 @@ class RunReportMemoryAdapter:
         ceo_decision = getattr(report, "ceo_decision", None) or {}
         ceo_action = ceo_decision.get("action", "")
         ceo_reason = ceo_decision.get("reason", "")
+        stopped = bool(getattr(report, "stopped", False))
+        stop_stage = getattr(report, "stop_stage", None)
+        stop_reason = getattr(report, "stop_reason", "")
+        production_skipped = bool(getattr(report, "production_skipped", False))
         summary = (
             f"{report.topic} を {report.media_mode} mode で制作し、"
             f"{scene_count} scenes / {asset_count} assets を生成しました。"
@@ -24,6 +28,10 @@ class RunReportMemoryAdapter:
         summary += f"再調査回数: {research_retry_count}回。"
         if ceo_action:
             summary += f"CEO判断: {ceo_action}。"
+        if stopped:
+            summary += f"CEO判断により{stop_stage or 'review'}工程で制作停止。"
+            if stop_reason:
+                summary += f"理由: {stop_reason}。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -42,5 +50,9 @@ class RunReportMemoryAdapter:
             "research_retry_count": research_retry_count,
             "ceo_action": ceo_action,
             "ceo_reason": ceo_reason,
+            "stopped": stopped,
+            "stop_stage": stop_stage,
+            "stop_reason": stop_reason,
+            "production_skipped": production_skipped,
             "summary": summary,
         }

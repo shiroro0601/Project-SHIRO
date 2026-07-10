@@ -133,3 +133,20 @@ def test_run_report_memory_adapter_adds_ceo_decision_fields():
 
     assert record["ceo_action"] == "proceed"
     assert record["ceo_reason"] == "Reviewer approved the script."
+
+
+def test_run_report_memory_adapter_adds_stop_fields():
+    report = make_report()
+    report.stopped = True
+    report.stop_stage = "review"
+    report.stop_reason = "Retry limit reached."
+    report.production_skipped = True
+
+    record = RunReportMemoryAdapter().to_memory_record(report)
+
+    assert record["stopped"] is True
+    assert record["stop_stage"] == "review"
+    assert record["stop_reason"] == "Retry limit reached."
+    assert record["production_skipped"] is True
+    assert "CEO判断によりreview工程で制作停止" in record["summary"]
+    assert "理由: Retry limit reached." in record["summary"]

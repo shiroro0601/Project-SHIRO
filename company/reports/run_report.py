@@ -30,6 +30,10 @@ class RunReport:
     research_retry_history: list[dict] = field(default_factory=list)
     ceo_decision: dict | None = None
     ceo_decision_history: list[dict] = field(default_factory=list)
+    stopped: bool = False
+    stop_stage: Optional[str] = None
+    stop_reason: str = ""
+    production_skipped: bool = False
 
 
 class RunReportWriter:
@@ -86,6 +90,10 @@ def build_run_report(
         ceo_decision_history=[
             dict(item) for item in result.get("ceo_decision_history", []) or []
         ],
+        stopped=bool(result.get("stopped", False)),
+        stop_stage=result.get("stop_stage"),
+        stop_reason=str(result.get("stop_reason", "")),
+        production_skipped=bool(result.get("production_skipped", False)),
     )
 
 

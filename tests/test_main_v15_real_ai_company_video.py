@@ -242,10 +242,22 @@ def test_parse_args_accepts_research_retries():
     assert args.research_retries == 1
 
 
+def test_parse_args_accepts_stop_on_ceo_stop():
+    args = main_v15.parse_args(["--stop-on-ceo-stop"])
+
+    assert args.stop_on_ceo_stop is True
+
+
 def test_parse_args_research_retries_default_is_zero():
     args = main_v15.parse_args([])
 
     assert args.research_retries == 0
+
+
+def test_parse_args_stop_on_ceo_stop_default_is_false():
+    args = main_v15.parse_args([])
+
+    assert args.stop_on_ceo_stop is False
 
 
 def test_parse_args_ceo_decision_default_is_false():
@@ -332,6 +344,19 @@ def test_build_company_passes_research_retry_limit():
     )
 
     assert company.research_retry_limit == 1
+
+
+def test_build_company_passes_stop_on_ceo_stop():
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        stop_on_ceo_stop=True,
+    )
+
+    assert company.stop_on_ceo_stop is True
 
 
 def test_run_real_ai_company_video_with_fakes():
@@ -1183,3 +1208,181 @@ def test_real_media_service_ng_raises_runtime_error(monkeypatch):
         main_v15.main(["--real-media"], service_health_checker=checker)
 
     assert checker.check_all_calls == 1
+
+
+def test_main_passes_stop_on_ceo_stop_to_runner(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+        stop_on_ceo_stop=False,
+    ):
+        calls.append(
+            {
+                "ceo_decision_policy": ceo_decision_policy,
+                "stop_on_ceo_stop": stop_on_ceo_stop,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": {
+                "action": "stop",
+                "reason": "Retry limit reached.",
+                "stage": "review",
+            },
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "",
+            "voice_path": "",
+            "scene_video_path": None,
+            "video_path": "",
+            "publish_result": None,
+            "stopped": True,
+            "stop_stage": "review",
+            "stop_reason": "Retry limit reached.",
+            "production_skipped": True,
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--ceo-decision", "--stop-on-ceo-stop", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
+    assert calls[0]["stop_on_ceo_stop"] is True
+    assert "CEO stop control:" in captured.out
+    assert "- enabled: yes" in captured.out
+    assert "- stopped: yes" in captured.out
+    assert "- production skipped: yes" in captured.out
+
+
+def test_main_warns_stop_on_ceo_stop_without_ceo_decision(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        stop_on_ceo_stop=False,
+    ):
+        calls.append(stop_on_ceo_stop)
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": None,
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "image.png",
+            "voice_path": "voice.wav",
+            "scene_video_path": "video.mp4",
+            "video_path": "video.mp4",
+            "publish_result": {"status": "dry_run"},
+            "stopped": False,
+            "stop_stage": None,
+            "stop_reason": "",
+            "production_skipped": False,
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--stop-on-ceo-stop", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert calls == [True]
+    assert "CEO stop control requires --ceo-decision" in captured.out
+
+
+def test_main_saves_report_and_memory_when_stopped(monkeypatch):
+    report_writer = FakeReportWriter()
+    memory = FakeMemory()
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+        stop_on_ceo_stop=False,
+    ):
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": (
+                "【評価】\n"
+                "構成が弱いです。\n\n"
+                "【改善点】\n"
+                "冒頭を改善\n\n"
+                "【判定】\n"
+                "修正必要"
+            ),
+            "quality_feedback": {
+                "evaluation": "構成が弱いです。",
+                "improvement_points": "冒頭を改善",
+                "decision": "修正必要",
+                "score": 0.0,
+            },
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": {
+                "action": "stop",
+                "reason": "Retry limit reached.",
+                "stage": "review",
+            },
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "",
+            "voice_path": "",
+            "scene_video_path": None,
+            "video_path": "",
+            "publish_result": None,
+            "stopped": True,
+            "stop_stage": "review",
+            "stop_reason": "Retry limit reached.",
+            "production_skipped": True,
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        ["--ceo-decision", "--stop-on-ceo-stop", "--save-memory"],
+        report_writer=report_writer,
+        memory=memory,
+    )
+
+    assert report_writer.reports[0].stopped is True
+    assert report_writer.reports[0].production_skipped is True
+    saved_record = memory.data["run_reports"][0]
+    assert saved_record["stopped"] is True
+    assert saved_record["stop_reason"] == "Retry limit reached."

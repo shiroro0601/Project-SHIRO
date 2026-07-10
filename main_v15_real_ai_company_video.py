@@ -120,6 +120,11 @@ def parse_args(argv=None):
         default=0,
         help="Retry ResearchRole when CEO decision requests research_again.",
     )
+    parser.add_argument(
+        "--stop-on-ceo-stop",
+        action="store_true",
+        help="Skip production steps when CEO decision returns stop.",
+    )
     return parser.parse_args(argv)
 
 
@@ -146,6 +151,7 @@ def build_company(
     quality_retry_limit: int = 0,
     research_retry_limit: int = 0,
     ceo_decision_policy=None,
+    stop_on_ceo_stop: bool = False,
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider, memory_context=memory_context)
@@ -169,6 +175,7 @@ def build_company(
         quality_retry_limit=quality_retry_limit,
         research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
+        stop_on_ceo_stop=stop_on_ceo_stop,
     )
 
 
@@ -184,6 +191,7 @@ def run_real_ai_company_video(
     quality_retry_limit: int = 0,
     research_retry_limit: int = 0,
     ceo_decision_policy=None,
+    stop_on_ceo_stop: bool = False,
 ):
     company = build_company(
         provider=provider,
@@ -196,6 +204,7 @@ def run_real_ai_company_video(
         quality_retry_limit=quality_retry_limit,
         research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
+        stop_on_ceo_stop=stop_on_ceo_stop,
     )
     return company.run(topic)
 
@@ -266,6 +275,15 @@ def print_ceo_decision_status(result: dict) -> None:
     print(f"- quality decision: {decision.get('quality_decision', '')}")
     print(f"- quality score: {decision.get('quality_score', '')}")
     print(f"- retry count: {decision.get('retry_count', '')}")
+
+
+def print_ceo_stop_control_status(result: dict, enabled: bool) -> None:
+    print("CEO stop control:")
+    print(f"- enabled: {'yes' if enabled else 'no'}")
+    print(f"- stopped: {'yes' if result.get('stopped') else 'no'}")
+    print(f"- stage: {result.get('stop_stage') or ''}")
+    print(f"- reason: {result.get('stop_reason') or ''}")
+    print(f"- production skipped: {'yes' if result.get('production_skipped') else 'no'}")
 
 
 def write_run_report(
@@ -409,6 +427,10 @@ def main(
                 print("Research retries require --ceo-decision and will not run without it.")
         if args.ceo_decision:
             run_kwargs["ceo_decision_policy"] = CEODecisionPolicy()
+        if args.stop_on_ceo_stop:
+            run_kwargs["stop_on_ceo_stop"] = True
+            if not args.ceo_decision:
+                print("CEO stop control requires --ceo-decision to take effect.")
         if memory_context is not None:
             run_kwargs["memory_context"] = memory_context
         result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
@@ -420,6 +442,7 @@ def main(
     print_research_retry_status(result, args.research_retries)
     print_quality_retry_status(result, args.quality_retries)
     print_ceo_decision_status(result)
+    print_ceo_stop_control_status(result, args.stop_on_ceo_stop)
     report = build_run_report(
         topic=str(result.get("topic", DEFAULT_TOPIC)),
         media_mode=mode,

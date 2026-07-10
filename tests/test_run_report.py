@@ -38,6 +38,10 @@ def test_run_report_can_be_created():
     assert report.research_retry_history == []
     assert report.ceo_decision is None
     assert report.ceo_decision_history == []
+    assert report.stopped is False
+    assert report.stop_stage is None
+    assert report.stop_reason == ""
+    assert report.production_skipped is False
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -171,6 +175,10 @@ def test_build_run_report_converts_result_dict_to_report():
                 "metadata": {},
             },
         ],
+        "stopped": True,
+        "stop_stage": "review",
+        "stop_reason": "Retry limit reached.",
+        "production_skipped": True,
     }
 
     report = build_run_report(
@@ -251,3 +259,7 @@ def test_build_run_report_converts_result_dict_to_report():
         "revise",
         "proceed",
     ]
+    assert report.stopped is True
+    assert report.stop_stage == "review"
+    assert report.stop_reason == "Retry limit reached."
+    assert report.production_skipped is True
