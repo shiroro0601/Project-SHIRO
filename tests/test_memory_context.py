@@ -204,3 +204,25 @@ def test_memory_context_stop_reason_goes_to_avoid_patterns():
     assert "避けること:" in prompt_text
     assert "topic: 猫の雑学; stop_reason: Retry limit reached." in prompt_text
     assert "improvement_points: 冒頭を改善" in prompt_text
+
+
+def test_memory_context_approval_status_goes_to_avoid_patterns():
+    context = MemoryContext(
+        records=[
+            {
+                "topic": "猫の雑学",
+                "approval_status": "pending",
+                "stop_reason": "Retry limit reached.",
+                "improvement_points": "冒頭を改善",
+                "summary": "人間承認待ち。",
+            }
+        ]
+    )
+
+    prompt_text = context.to_prompt_text()
+
+    assert "approval_status: pending" in prompt_text
+    assert (
+        "topic: 猫の雑学; stop_reason: Retry limit reached.; "
+        "approval_status: pending"
+    ) in prompt_text

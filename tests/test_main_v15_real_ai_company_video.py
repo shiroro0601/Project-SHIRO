@@ -248,6 +248,30 @@ def test_parse_args_accepts_stop_on_ceo_stop():
     assert args.stop_on_ceo_stop is True
 
 
+def test_parse_args_accepts_human_approval():
+    args = main_v15.parse_args(["--human-approval"])
+
+    assert args.human_approval is True
+
+
+def test_parse_args_accepts_approval_decision():
+    args = main_v15.parse_args(
+        [
+            "--human-approval",
+            "--approval-decision",
+            "approved",
+            "--approval-comment",
+            "OK",
+            "--approval-decided-by",
+            "Koshi",
+        ]
+    )
+
+    assert args.approval_decision == "approved"
+    assert args.approval_comment == "OK"
+    assert args.approval_decided_by == "Koshi"
+
+
 def test_parse_args_research_retries_default_is_zero():
     args = main_v15.parse_args([])
 
@@ -258,6 +282,12 @@ def test_parse_args_stop_on_ceo_stop_default_is_false():
     args = main_v15.parse_args([])
 
     assert args.stop_on_ceo_stop is False
+
+
+def test_parse_args_human_approval_default_is_false():
+    args = main_v15.parse_args([])
+
+    assert args.human_approval is False
 
 
 def test_parse_args_ceo_decision_default_is_false():
@@ -357,6 +387,29 @@ def test_build_company_passes_stop_on_ceo_stop():
     )
 
     assert company.stop_on_ceo_stop is True
+
+
+def test_build_company_passes_human_approval_options():
+    gate = main_v15.HumanApprovalGate(id_factory=lambda: "approval-1")
+
+    company = main_v15.build_company(
+        provider=FakeProvider(),
+        image_generator=FakeImageGenerator(),
+        voice_generator=FakeVoiceGenerator(),
+        scene_video_composer=FakeSceneVideoComposer(),
+        publisher=FakePublisher(),
+        human_approval_gate=gate,
+        require_human_approval_on_stop=True,
+        approval_decision="approved",
+        approval_decided_by="Koshi",
+        approval_comment="OK",
+    )
+
+    assert company.human_approval_gate is gate
+    assert company.require_human_approval_on_stop is True
+    assert company.approval_decision == "approved"
+    assert company.approval_decided_by == "Koshi"
+    assert company.approval_comment == "OK"
 
 
 def test_run_real_ai_company_video_with_fakes():
@@ -1386,3 +1439,175 @@ def test_main_saves_report_and_memory_when_stopped(monkeypatch):
     saved_record = memory.data["run_reports"][0]
     assert saved_record["stopped"] is True
     assert saved_record["stop_reason"] == "Retry limit reached."
+
+
+def test_main_human_approval_enables_ceo_stop_and_gate(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+        stop_on_ceo_stop=False,
+        human_approval_gate=None,
+        require_human_approval_on_stop=False,
+        approval_decision=None,
+        approval_decided_by="human",
+        approval_comment="",
+    ):
+        calls.append(
+            {
+                "ceo_decision_policy": ceo_decision_policy,
+                "stop_on_ceo_stop": stop_on_ceo_stop,
+                "human_approval_gate": human_approval_gate,
+                "require_human_approval_on_stop": require_human_approval_on_stop,
+                "approval_decision": approval_decision,
+                "approval_decided_by": approval_decided_by,
+                "approval_comment": approval_comment,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": {"action": "stop", "reason": "Retry limit reached."},
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "",
+            "voice_path": "",
+            "scene_video_path": None,
+            "video_path": "",
+            "publish_result": None,
+            "stopped": True,
+            "stop_stage": "review",
+            "stop_reason": "Retry limit reached.",
+            "production_skipped": True,
+            "approval_required": True,
+            "approval_request": {
+                "approval_id": "approval-1",
+                "status": "pending",
+                "stage": "review",
+                "reason": "Retry limit reached.",
+            },
+            "approval_status": "pending",
+            "approval_decision": None,
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(["--human-approval", "--no-report"])
+
+    captured = capsys.readouterr()
+    assert isinstance(calls[0]["ceo_decision_policy"], main_v15.CEODecisionPolicy)
+    assert calls[0]["stop_on_ceo_stop"] is True
+    assert isinstance(calls[0]["human_approval_gate"], main_v15.HumanApprovalGate)
+    assert calls[0]["require_human_approval_on_stop"] is True
+    assert "Human approval:" in captured.out
+    assert "- required: yes" in captured.out
+    assert "- approval id: approval-1" in captured.out
+    assert "- status: pending" in captured.out
+
+
+def test_main_human_approval_can_record_approved_decision(monkeypatch, capsys):
+    calls = []
+
+    def fake_run_real_ai_company_video(
+        topic,
+        real_media=False,
+        ceo_decision_policy=None,
+        stop_on_ceo_stop=False,
+        human_approval_gate=None,
+        require_human_approval_on_stop=False,
+        approval_decision=None,
+        approval_decided_by="human",
+        approval_comment="",
+    ):
+        calls.append(
+            {
+                "approval_decision": approval_decision,
+                "approval_decided_by": approval_decided_by,
+                "approval_comment": approval_comment,
+            }
+        )
+        return {
+            "topic": topic,
+            "research_result": "research",
+            "script_result": "script",
+            "review_result": "review",
+            "quality_feedback": {},
+            "quality_retry_count": 0,
+            "quality_retry_history": [],
+            "research_retry_count": 0,
+            "research_retry_history": [],
+            "ceo_decision": {"action": "stop", "reason": "Retry limit reached."},
+            "ceo_decision_history": [],
+            "script_artifact": None,
+            "scene_assets": [],
+            "image_path": "",
+            "voice_path": "",
+            "scene_video_path": None,
+            "video_path": "",
+            "publish_result": None,
+            "stopped": True,
+            "stop_stage": "review",
+            "stop_reason": "Retry limit reached.",
+            "production_skipped": True,
+            "approval_required": True,
+            "approval_request": {
+                "approval_id": "approval-1",
+                "status": "approved",
+                "stage": "review",
+                "reason": "Retry limit reached.",
+            },
+            "approval_status": "approved",
+            "approval_decision": {
+                "decision": "approved",
+                "decided_by": "Koshi",
+                "comment": "OK",
+            },
+        }
+
+    monkeypatch.setattr(
+        main_v15,
+        "run_real_ai_company_video",
+        fake_run_real_ai_company_video,
+    )
+
+    main_v15.main(
+        [
+            "--human-approval",
+            "--approval-decision",
+            "approved",
+            "--approval-decided-by",
+            "Koshi",
+            "--approval-comment",
+            "OK",
+            "--no-report",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert calls[0] == {
+        "approval_decision": "approved",
+        "approval_decided_by": "Koshi",
+        "approval_comment": "OK",
+    }
+    assert "- status: approved" in captured.out
+    assert "- decision: approved" in captured.out
+    assert "production resume is not implemented" in captured.out
+
+
+def test_main_rejects_approval_decision_without_human_approval():
+    with pytest.raises(ValueError, match="requires --human-approval"):
+        main_v15.main(["--approval-decision", "approved", "--no-report"])

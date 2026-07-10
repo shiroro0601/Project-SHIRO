@@ -18,6 +18,13 @@ class RunReportMemoryAdapter:
         stop_stage = getattr(report, "stop_stage", None)
         stop_reason = getattr(report, "stop_reason", "")
         production_skipped = bool(getattr(report, "production_skipped", False))
+        approval_required = bool(getattr(report, "approval_required", False))
+        approval_status = getattr(report, "approval_status", "not_required")
+        approval_request = getattr(report, "approval_request", None) or {}
+        approval_decision = getattr(report, "approval_decision", None) or {}
+        approval_id = approval_request.get("approval_id", "")
+        approval_decision_value = approval_decision.get("decision", "")
+        approval_comment = approval_decision.get("comment", "")
         summary = (
             f"{report.topic} を {report.media_mode} mode で制作し、"
             f"{scene_count} scenes / {asset_count} assets を生成しました。"
@@ -32,6 +39,15 @@ class RunReportMemoryAdapter:
             summary += f"CEO判断により{stop_stage or 'review'}工程で制作停止。"
             if stop_reason:
                 summary += f"理由: {stop_reason}。"
+        if approval_required:
+            if approval_status == "pending":
+                summary += "人間承認待ち。"
+            elif approval_status == "approved":
+                summary += "人間CEOにより承認済み。ただしProduction再開は未実行。"
+            elif approval_status == "rejected":
+                summary += "人間CEOにより却下。"
+            if approval_id:
+                summary += f"approval_id: {approval_id}。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -54,5 +70,10 @@ class RunReportMemoryAdapter:
             "stop_stage": stop_stage,
             "stop_reason": stop_reason,
             "production_skipped": production_skipped,
+            "approval_required": approval_required,
+            "approval_status": approval_status,
+            "approval_id": approval_id,
+            "approval_decision": approval_decision_value,
+            "approval_comment": approval_comment,
             "summary": summary,
         }

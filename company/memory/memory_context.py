@@ -59,6 +59,8 @@ class MemoryContext:
             lines.append(
                 f"   improvement_points: {record.get('improvement_points', '')}"
             )
+        if "approval_status" in record:
+            lines.append(f"   approval_status: {record.get('approval_status', '')}")
         return lines
 
     def _success_pattern_lines(self) -> list[str]:
@@ -90,10 +92,16 @@ class MemoryContext:
             stop_part = ""
             if record.get("stop_reason"):
                 stop_part = f"stop_reason: {record.get('stop_reason', '')}; "
+            approval_part = ""
+            if record.get("approval_status"):
+                approval_part = (
+                    f"approval_status: {record.get('approval_status', '')}; "
+                )
             lines.append(
                 "- "
                 f"topic: {record.get('topic', '')}; "
                 f"{stop_part}"
+                f"{approval_part}"
                 f"improvement_points: {record.get('improvement_points', '')}; "
                 f"summary: {record.get('summary', '')}"
             )
@@ -141,6 +149,8 @@ class MemoryContext:
         return score is not None and score >= 0.8
 
     def _should_avoid(self, record: dict) -> bool:
+        if record.get("approval_status") in {"pending", "rejected"}:
+            return True
         if record.get("stopped"):
             return True
         if record.get("quality_decision") == "修正必要":
