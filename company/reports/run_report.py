@@ -34,6 +34,10 @@ class RunReport:
     stop_stage: Optional[str] = None
     stop_reason: str = ""
     production_skipped: bool = False
+    approval_required: bool = False
+    approval_status: str = "not_required"
+    approval_request: dict | None = None
+    approval_decision: dict | None = None
 
 
 class RunReportWriter:
@@ -94,6 +98,10 @@ def build_run_report(
         stop_stage=result.get("stop_stage"),
         stop_reason=str(result.get("stop_reason", "")),
         production_skipped=bool(result.get("production_skipped", False)),
+        approval_required=bool(result.get("approval_required", False)),
+        approval_status=str(result.get("approval_status", "not_required")),
+        approval_request=_optional_dict(result.get("approval_request")),
+        approval_decision=_optional_dict(result.get("approval_decision")),
     )
 
 

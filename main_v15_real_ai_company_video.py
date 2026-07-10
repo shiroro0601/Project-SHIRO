@@ -5,6 +5,7 @@ import wave
 from pathlib import Path
 from pprint import pprint
 
+from company.approval.human_approval import HumanApprovalGate
 from company.brain.provider import OllamaProvider
 from company.core.ceo_decision import CEODecisionPolicy
 from company.core.employee_role import ResearchRole, ReviewerRole, WriterRole
@@ -125,6 +126,27 @@ def parse_args(argv=None):
         action="store_true",
         help="Skip production steps when CEO decision returns stop.",
     )
+    parser.add_argument(
+        "--human-approval",
+        action="store_true",
+        help="Create a human approval request when CEO stop control stops production.",
+    )
+    parser.add_argument(
+        "--approval-decision",
+        choices=["approved", "rejected"],
+        default=None,
+        help="Resolve the created approval request in the same dry-run execution.",
+    )
+    parser.add_argument(
+        "--approval-comment",
+        default="",
+        help="Comment attached to --approval-decision.",
+    )
+    parser.add_argument(
+        "--approval-decided-by",
+        default="human",
+        help="Name recorded as the approval decision maker.",
+    )
     return parser.parse_args(argv)
 
 
@@ -152,6 +174,11 @@ def build_company(
     research_retry_limit: int = 0,
     ceo_decision_policy=None,
     stop_on_ceo_stop: bool = False,
+    human_approval_gate=None,
+    require_human_approval_on_stop: bool = False,
+    approval_decision: str | None = None,
+    approval_decided_by: str = "human",
+    approval_comment: str = "",
 ):
     provider = provider or OllamaProvider(model="llama3.2:3b")
     researcher = ResearchRole(provider=provider, memory_context=memory_context)
@@ -176,6 +203,11 @@ def build_company(
         research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
         stop_on_ceo_stop=stop_on_ceo_stop,
+        human_approval_gate=human_approval_gate,
+        require_human_approval_on_stop=require_human_approval_on_stop,
+        approval_decision=approval_decision,
+        approval_decided_by=approval_decided_by,
+        approval_comment=approval_comment,
     )
 
 
@@ -192,6 +224,11 @@ def run_real_ai_company_video(
     research_retry_limit: int = 0,
     ceo_decision_policy=None,
     stop_on_ceo_stop: bool = False,
+    human_approval_gate=None,
+    require_human_approval_on_stop: bool = False,
+    approval_decision: str | None = None,
+    approval_decided_by: str = "human",
+    approval_comment: str = "",
 ):
     company = build_company(
         provider=provider,
@@ -205,6 +242,11 @@ def run_real_ai_company_video(
         research_retry_limit=research_retry_limit,
         ceo_decision_policy=ceo_decision_policy,
         stop_on_ceo_stop=stop_on_ceo_stop,
+        human_approval_gate=human_approval_gate,
+        require_human_approval_on_stop=require_human_approval_on_stop,
+        approval_decision=approval_decision,
+        approval_decided_by=approval_decided_by,
+        approval_comment=approval_comment,
     )
     return company.run(topic)
 
@@ -284,6 +326,23 @@ def print_ceo_stop_control_status(result: dict, enabled: bool) -> None:
     print(f"- stage: {result.get('stop_stage') or ''}")
     print(f"- reason: {result.get('stop_reason') or ''}")
     print(f"- production skipped: {'yes' if result.get('production_skipped') else 'no'}")
+
+
+def print_human_approval_status(result: dict) -> None:
+    approval_request = result.get("approval_request") or {}
+    approval_decision = result.get("approval_decision") or {}
+    print("Human approval:")
+    print(f"- required: {'yes' if result.get('approval_required') else 'no'}")
+    print(f"- approval id: {approval_request.get('approval_id', '')}")
+    print(f"- status: {result.get('approval_status', 'not_required')}")
+    print(f"- stage: {approval_request.get('stage', '')}")
+    print(f"- reason: {approval_request.get('reason', '')}")
+    if approval_decision:
+        print(f"- decision: {approval_decision.get('decision', '')}")
+        print(f"- decided by: {approval_decision.get('decided_by', '')}")
+        print(f"- comment: {approval_decision.get('comment', '')}")
+        if approval_decision.get("decision") == "approved":
+            print("Approval approved, but production resume is not implemented in this Sprint.")
 
 
 def write_run_report(
@@ -394,6 +453,11 @@ def main(
     if args.memory_loop:
         args.use_memory = True
         args.save_memory = True
+    if args.human_approval:
+        args.ceo_decision = True
+        args.stop_on_ceo_stop = True
+    if args.approval_decision and not args.human_approval:
+        raise ValueError("--approval-decision requires --human-approval")
     if args.quality_retries < 0:
         raise ValueError("--quality-retries must be greater than or equal to 0")
     if args.research_retries < 0:
@@ -431,6 +495,12 @@ def main(
             run_kwargs["stop_on_ceo_stop"] = True
             if not args.ceo_decision:
                 print("CEO stop control requires --ceo-decision to take effect.")
+        if args.human_approval:
+            run_kwargs["human_approval_gate"] = HumanApprovalGate()
+            run_kwargs["require_human_approval_on_stop"] = True
+            run_kwargs["approval_decision"] = args.approval_decision
+            run_kwargs["approval_decided_by"] = args.approval_decided_by
+            run_kwargs["approval_comment"] = args.approval_comment
         if memory_context is not None:
             run_kwargs["memory_context"] = memory_context
         result = run_real_ai_company_video(DEFAULT_TOPIC, **run_kwargs)
@@ -443,6 +513,7 @@ def main(
     print_quality_retry_status(result, args.quality_retries)
     print_ceo_decision_status(result)
     print_ceo_stop_control_status(result, args.stop_on_ceo_stop)
+    print_human_approval_status(result)
     report = build_run_report(
         topic=str(result.get("topic", DEFAULT_TOPIC)),
         media_mode=mode,

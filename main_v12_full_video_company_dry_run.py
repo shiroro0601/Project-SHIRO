@@ -1,6 +1,7 @@
 from pprint import pprint
 from dataclasses import asdict
 
+from company.approval.human_approval import STATUS_APPROVED, STATUS_REJECTED
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
 from company.core.ceo_decision import ACTION_RESEARCH_AGAIN, ACTION_REVISE, ACTION_STOP
@@ -102,6 +103,11 @@ class FullAutoVideoPipeline:
         research_retry_limit: int = 0,
         ceo_decision_policy=None,
         stop_on_ceo_stop: bool = False,
+        human_approval_gate=None,
+        require_human_approval_on_stop: bool = False,
+        approval_decision: str | None = None,
+        approval_decided_by: str = "human",
+        approval_comment: str = "",
     ):
         if quality_retry_limit < 0:
             raise ValueError("quality_retry_limit must be greater than or equal to 0.")
@@ -123,6 +129,11 @@ class FullAutoVideoPipeline:
         self.research_retry_limit = research_retry_limit
         self.ceo_decision_policy = ceo_decision_policy
         self.stop_on_ceo_stop = stop_on_ceo_stop
+        self.human_approval_gate = human_approval_gate
+        self.require_human_approval_on_stop = require_human_approval_on_stop
+        self.approval_decision = approval_decision
+        self.approval_decided_by = approval_decided_by
+        self.approval_comment = approval_comment
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -248,6 +259,10 @@ class FullAutoVideoPipeline:
             "stop_stage": None,
             "stop_reason": "",
             "production_skipped": False,
+            "approval_required": False,
+            "approval_request": None,
+            "approval_status": "not_required",
+            "approval_decision": None,
         }
 
     def _build_stopped_result(
@@ -266,6 +281,18 @@ class FullAutoVideoPipeline:
         ceo_decision,
         ceo_decision_history: list[dict],
     ) -> dict:
+        approval_state = self._build_approval_state(
+            topic=topic,
+            ceo_decision=ceo_decision,
+            quality_feedback=quality_feedback,
+            script_result=script_result,
+            review_result=review_result,
+            quality_retry_count=quality_retry_count,
+            quality_retry_history=quality_retry_history,
+            research_retry_count=research_retry_count,
+            research_retry_history=research_retry_history,
+            ceo_decision_history=ceo_decision_history,
+        )
         return {
             "topic": topic,
             "execution_order": execution_order,
@@ -290,7 +317,71 @@ class FullAutoVideoPipeline:
             "stop_stage": self._ceo_stage(ceo_decision) or "review",
             "stop_reason": self._ceo_reason(ceo_decision),
             "production_skipped": True,
+            **approval_state,
         }
+
+    def _build_approval_state(
+        self,
+        *,
+        topic: str,
+        ceo_decision,
+        quality_feedback: dict,
+        script_result: str,
+        review_result: str,
+        quality_retry_count: int,
+        quality_retry_history: list[dict],
+        research_retry_count: int,
+        research_retry_history: list[dict],
+        ceo_decision_history: list[dict],
+    ) -> dict:
+        if not self.require_human_approval_on_stop or self.human_approval_gate is None:
+            return {
+                "approval_required": False,
+                "approval_request": None,
+                "approval_status": "not_required",
+                "approval_decision": None,
+            }
+
+        approval_request = self.human_approval_gate.create_request(
+            topic=topic,
+            stage=self._ceo_stage(ceo_decision) or "review",
+            reason=self._ceo_reason(ceo_decision),
+            ceo_action=self._ceo_action(ceo_decision),
+            quality_feedback=quality_feedback,
+            script_result=script_result,
+            review_result=review_result,
+            metadata={
+                "quality_retry_count": quality_retry_count,
+                "research_retry_count": research_retry_count,
+                "ceo_decision_history": ceo_decision_history,
+                "quality_retry_history": quality_retry_history,
+                "research_retry_history": research_retry_history,
+            },
+        )
+        approval_decision = self._resolve_approval_decision(approval_request)
+        return {
+            "approval_required": True,
+            "approval_request": asdict(approval_request),
+            "approval_status": approval_request.status,
+            "approval_decision": (
+                asdict(approval_decision) if approval_decision is not None else None
+            ),
+        }
+
+    def _resolve_approval_decision(self, approval_request):
+        if self.approval_decision == STATUS_APPROVED:
+            return self.human_approval_gate.approve(
+                approval_request,
+                decided_by=self.approval_decided_by,
+                comment=self.approval_comment,
+            )
+        if self.approval_decision == STATUS_REJECTED:
+            return self.human_approval_gate.reject(
+                approval_request,
+                decided_by=self.approval_decided_by,
+                comment=self.approval_comment,
+            )
+        return None
 
     def _run_text_decision_loop(self, topic: str, execution_order: list[str]):
         research_retry_count = 0

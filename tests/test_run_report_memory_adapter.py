@@ -150,3 +150,37 @@ def test_run_report_memory_adapter_adds_stop_fields():
     assert record["production_skipped"] is True
     assert "CEO判断によりreview工程で制作停止" in record["summary"]
     assert "理由: Retry limit reached." in record["summary"]
+
+
+def test_run_report_memory_adapter_adds_pending_approval_fields():
+    report = make_report()
+    report.approval_required = True
+    report.approval_status = "pending"
+    report.approval_request = {"approval_id": "approval-1"}
+
+    record = RunReportMemoryAdapter().to_memory_record(report)
+
+    assert record["approval_required"] is True
+    assert record["approval_status"] == "pending"
+    assert record["approval_id"] == "approval-1"
+    assert record["approval_decision"] == ""
+    assert "人間承認待ち" in record["summary"]
+    assert "approval_id: approval-1" in record["summary"]
+
+
+def test_run_report_memory_adapter_adds_approval_decision_summary():
+    report = make_report()
+    report.approval_required = True
+    report.approval_status = "approved"
+    report.approval_request = {"approval_id": "approval-1"}
+    report.approval_decision = {
+        "decision": "approved",
+        "comment": "OK",
+    }
+
+    record = RunReportMemoryAdapter().to_memory_record(report)
+
+    assert record["approval_status"] == "approved"
+    assert record["approval_decision"] == "approved"
+    assert record["approval_comment"] == "OK"
+    assert "人間CEOにより承認済み" in record["summary"]

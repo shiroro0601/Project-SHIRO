@@ -42,6 +42,10 @@ def test_run_report_can_be_created():
     assert report.stop_stage is None
     assert report.stop_reason == ""
     assert report.production_skipped is False
+    assert report.approval_required is False
+    assert report.approval_status == "not_required"
+    assert report.approval_request is None
+    assert report.approval_decision is None
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -179,6 +183,20 @@ def test_build_run_report_converts_result_dict_to_report():
         "stop_stage": "review",
         "stop_reason": "Retry limit reached.",
         "production_skipped": True,
+        "approval_required": True,
+        "approval_status": "approved",
+        "approval_request": {
+            "approval_id": "approval-1",
+            "status": "approved",
+            "stage": "review",
+            "reason": "Retry limit reached.",
+        },
+        "approval_decision": {
+            "approval_id": "approval-1",
+            "decision": "approved",
+            "decided_by": "Koshi",
+            "comment": "OK",
+        },
     }
 
     report = build_run_report(
@@ -263,3 +281,7 @@ def test_build_run_report_converts_result_dict_to_report():
     assert report.stop_stage == "review"
     assert report.stop_reason == "Retry limit reached."
     assert report.production_skipped is True
+    assert report.approval_required is True
+    assert report.approval_status == "approved"
+    assert report.approval_request["approval_id"] == "approval-1"
+    assert report.approval_decision["decision"] == "approved"
