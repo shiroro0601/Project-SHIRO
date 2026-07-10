@@ -24,6 +24,8 @@ class RunReport:
     video_path: str
     scene_video_path: Optional[str]
     quality_feedback: dict = field(default_factory=dict)
+    quality_retry_count: int = 0
+    quality_retry_history: list[dict] = field(default_factory=list)
 
 
 class RunReportWriter:
@@ -68,6 +70,10 @@ def build_run_report(
         video_path=str(result.get("video_path", "")),
         scene_video_path=result.get("scene_video_path"),
         quality_feedback=asdict(quality_feedback),
+        quality_retry_count=int(result.get("quality_retry_count", 0) or 0),
+        quality_retry_history=[
+            dict(item) for item in result.get("quality_retry_history", []) or []
+        ],
     )
 
 

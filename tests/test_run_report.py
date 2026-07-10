@@ -32,6 +32,8 @@ def test_run_report_can_be_created():
     assert report.topic == "猫の意外な雑学"
     assert report.status == "completed"
     assert report.quality_feedback == {}
+    assert report.quality_retry_count == 0
+    assert report.quality_retry_history == []
 
 
 def test_run_report_writer_saves_json_with_japanese(tmp_path):
@@ -104,6 +106,21 @@ def test_build_run_report_converts_result_dict_to_report():
         "voice_path": "voice.wav",
         "video_path": "video.mp4",
         "scene_video_path": "scene_video.mp4",
+        "quality_retry_count": 1,
+        "quality_retry_history": [
+            {
+                "attempt": 0,
+                "decision": "修正必要",
+                "score": 0.0,
+                "improvement_points": "冒頭を改善",
+            },
+            {
+                "attempt": 1,
+                "decision": "合格",
+                "score": 1.0,
+                "improvement_points": "なし",
+            },
+        ],
     }
 
     report = build_run_report(
@@ -139,3 +156,18 @@ def test_build_run_report_converts_result_dict_to_report():
         "decision": "合格",
         "score": 1.0,
     }
+    assert report.quality_retry_count == 1
+    assert report.quality_retry_history == [
+        {
+            "attempt": 0,
+            "decision": "修正必要",
+            "score": 0.0,
+            "improvement_points": "冒頭を改善",
+        },
+        {
+            "attempt": 1,
+            "decision": "合格",
+            "score": 1.0,
+            "improvement_points": "なし",
+        },
+    ]

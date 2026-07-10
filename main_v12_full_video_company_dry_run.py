@@ -1,4 +1,5 @@
 from pprint import pprint
+from dataclasses import asdict
 
 from company.artifacts.scene_asset import SceneAsset
 from company.artifacts.script_artifact_parser import ScriptArtifactParser
@@ -14,6 +15,7 @@ from company.core.employee_role import (
 from company.core.task import TaskType
 from company.core.task_factory import TaskFactory
 from company.publishers.youtube_studio_publisher import YouTubeStudioPublisher
+from company.reports.quality_feedback import QualityFeedbackParser
 
 
 class DryRunTextProvider:
@@ -95,7 +97,11 @@ class FullAutoVideoPipeline:
         publisher=None,
         script_artifact_parser=None,
         scene_video_composer=None,
+        quality_retry_limit: int = 0,
     ):
+        if quality_retry_limit < 0:
+            raise ValueError("quality_retry_limit must be greater than or equal to 0.")
+
         text_provider = text_provider or DryRunTextProvider()
         self.researcher = researcher or ResearchRole(provider=text_provider)
         self.writer = writer or WriterRole(provider=text_provider)
@@ -106,6 +112,8 @@ class FullAutoVideoPipeline:
         self.publisher = publisher or YouTubeStudioPublisher(dry_run=True)
         self.script_artifact_parser = script_artifact_parser or ScriptArtifactParser()
         self.scene_video_composer = scene_video_composer
+        self.quality_feedback_parser = QualityFeedbackParser()
+        self.quality_retry_limit = quality_retry_limit
 
     def run(self, topic: str):
         execution_order: list[str] = []
@@ -113,12 +121,15 @@ class FullAutoVideoPipeline:
         execution_order.append("Researcher")
         research_result = self.researcher.execute(topic)
 
-        execution_order.append("Writer")
-        script_result = self.writer.execute(research_result)
-        script_artifact = self.script_artifact_parser.parse(script_result)
+        (
+            script_result,
+            review_result,
+            quality_feedback,
+            quality_retry_count,
+            quality_retry_history,
+        ) = self._run_quality_retry_loop(research_result, execution_order)
 
-        execution_order.append("Reviewer")
-        review_result = self.reviewer.execute(script_result)
+        script_artifact = self.script_artifact_parser.parse(script_result)
 
         scene_assets = self._generate_scene_assets(script_artifact, execution_order)
 
@@ -193,11 +204,104 @@ class FullAutoVideoPipeline:
             "script_artifact": script_artifact,
             "scene_assets": scene_assets,
             "review_result": review_result,
+            "quality_feedback": quality_feedback,
+            "quality_retry_count": quality_retry_count,
+            "quality_retry_history": quality_retry_history,
             "image_path": image_path,
             "voice_path": voice_path,
             "scene_video_path": scene_video_path,
             "video_path": video_path,
             "publish_result": publish_result,
+        }
+
+    def _run_quality_retry_loop(
+        self,
+        research_result: str,
+        execution_order: list[str],
+    ):
+        execution_order.append("Writer")
+        script_result = self.writer.execute(research_result)
+
+        execution_order.append("Reviewer")
+        review_result = self.reviewer.execute(script_result)
+        quality_feedback = self.quality_feedback_parser.parse(review_result)
+        history = [
+            self._quality_retry_history_entry(
+                attempt=0,
+                script_result=script_result,
+                review_result=review_result,
+                quality_feedback=quality_feedback,
+            )
+        ]
+
+        retry_count = 0
+        while (
+            quality_feedback.decision == "修正必要"
+            and retry_count < self.quality_retry_limit
+        ):
+            retry_count += 1
+            revision_input = self._build_revision_input(
+                research_result=research_result,
+                script_result=script_result,
+                quality_feedback=quality_feedback,
+            )
+
+            execution_order.append("Writer")
+            script_result = self.writer.execute(revision_input)
+
+            execution_order.append("Reviewer")
+            review_result = self.reviewer.execute(script_result)
+            quality_feedback = self.quality_feedback_parser.parse(review_result)
+            history.append(
+                self._quality_retry_history_entry(
+                    attempt=retry_count,
+                    script_result=script_result,
+                    review_result=review_result,
+                    quality_feedback=quality_feedback,
+                )
+            )
+
+        return (
+            script_result,
+            review_result,
+            asdict(quality_feedback),
+            retry_count,
+            history,
+        )
+
+    def _build_revision_input(
+        self,
+        research_result: str,
+        script_result: str,
+        quality_feedback,
+    ) -> str:
+        return (
+            "以下の調査結果だけを使って台本を修正してください。\n\n"
+            "【調査結果】\n"
+            f"{research_result}\n\n"
+            "【前回の台本】\n"
+            f"{script_result}\n\n"
+            "【Reviewerの改善点】\n"
+            f"{quality_feedback.improvement_points}\n\n"
+            "【Reviewerの評価】\n"
+            f"{quality_feedback.evaluation}\n\n"
+            "前回の問題を修正し、同じ問題を繰り返さないでください。"
+        )
+
+    def _quality_retry_history_entry(
+        self,
+        attempt: int,
+        script_result: str,
+        review_result: str,
+        quality_feedback,
+    ) -> dict:
+        return {
+            "attempt": attempt,
+            "script_result": script_result,
+            "review_result": review_result,
+            "decision": quality_feedback.decision,
+            "score": quality_feedback.score,
+            "improvement_points": quality_feedback.improvement_points,
         }
 
     def _generate_scene_assets(self, script_artifact, execution_order: list[str]):
