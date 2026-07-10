@@ -1,5 +1,6 @@
 import pytest
 
+from company.artifacts.script_artifact import ScriptArtifact
 from company.approval.human_approval import HumanApprovalGate
 
 
@@ -85,3 +86,23 @@ def test_human_approval_gate_rejects_after_approval():
 
     with pytest.raises(ValueError, match="already resolved"):
         gate.reject(request)
+
+
+def test_human_approval_gate_builds_resume_context_after_approval():
+    gate = make_gate()
+    request = create_request(gate)
+    gate.approve(request)
+    artifact = ScriptArtifact(
+        title="猫タイトル",
+        narration="猫ナレーション",
+        image_prompts=[],
+        scenes=[],
+        raw_text="raw",
+    )
+
+    context = gate.build_resume_context(request, script_artifact=artifact)
+
+    assert context.approval_id == "approval-1"
+    assert context.topic == "猫の意外な雑学"
+    assert context.script_result == "script"
+    assert context.script_artifact is artifact

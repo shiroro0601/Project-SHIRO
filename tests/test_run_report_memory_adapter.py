@@ -184,3 +184,17 @@ def test_run_report_memory_adapter_adds_approval_decision_summary():
     assert record["approval_decision"] == "approved"
     assert record["approval_comment"] == "OK"
     assert "人間CEOにより承認済み" in record["summary"]
+
+
+def test_run_report_memory_adapter_adds_resume_fields_and_summary():
+    report = make_report()
+    report.resumed_from_approval = True
+    report.production_resumed = True
+    report.production_resume_completed = True
+
+    record = RunReportMemoryAdapter().to_memory_record(report)
+
+    assert record["resumed_from_approval"] is True
+    assert record["production_resumed"] is True
+    assert record["production_resume_completed"] is True
+    assert "Productionを再開し、動画生成を完了" in record["summary"]

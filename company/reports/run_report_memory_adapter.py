@@ -25,6 +25,11 @@ class RunReportMemoryAdapter:
         approval_id = approval_request.get("approval_id", "")
         approval_decision_value = approval_decision.get("decision", "")
         approval_comment = approval_decision.get("comment", "")
+        resumed_from_approval = bool(getattr(report, "resumed_from_approval", False))
+        production_resumed = bool(getattr(report, "production_resumed", False))
+        production_resume_completed = bool(
+            getattr(report, "production_resume_completed", False)
+        )
         summary = (
             f"{report.topic} を {report.media_mode} mode で制作し、"
             f"{scene_count} scenes / {asset_count} assets を生成しました。"
@@ -48,6 +53,10 @@ class RunReportMemoryAdapter:
                 summary += "人間CEOにより却下。"
             if approval_id:
                 summary += f"approval_id: {approval_id}。"
+        if production_resumed and production_resume_completed:
+            summary += "人間CEO承認後にProductionを再開し、動画生成を完了しました。"
+        elif production_resumed:
+            summary += "人間CEO承認後にProductionを再開しましたが、完了しませんでした。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -75,5 +84,8 @@ class RunReportMemoryAdapter:
             "approval_id": approval_id,
             "approval_decision": approval_decision_value,
             "approval_comment": approval_comment,
+            "resumed_from_approval": resumed_from_approval,
+            "production_resumed": production_resumed,
+            "production_resume_completed": production_resume_completed,
             "summary": summary,
         }
