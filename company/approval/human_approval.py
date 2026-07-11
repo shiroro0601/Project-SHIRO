@@ -2,6 +2,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
 
+from company.approval.approval_event import (
+    ACTION_APPROVED,
+    ACTION_CREATED,
+    ACTION_REJECTED,
+    ApprovalEvent,
+)
 from company.approval.approval_resume import ApprovalResumeContext
 from company.approval.exceptions import (
     ApprovalRequestDataError,
@@ -94,10 +100,17 @@ class ApprovalDecision:
 
 
 class HumanApprovalGate:
-    def __init__(self, id_factory=None, clock=None, repository=None):
+    def __init__(
+        self,
+        id_factory=None,
+        clock=None,
+        repository=None,
+        event_id_factory=None,
+    ):
         self.id_factory = id_factory or (lambda: str(uuid4()))
         self.clock = clock or (lambda: datetime.now().isoformat(timespec="seconds"))
         self.repository = repository
+        self.event_id_factory = event_id_factory or (lambda: str(uuid4()))
 
     def create_request(
         self,
@@ -125,7 +138,22 @@ class HumanApprovalGate:
             review_result=review_result,
             metadata=dict(metadata or {}),
         )
-        self._save_if_available(request)
+        self._save_with_event_if_available(
+            request,
+            self._build_event(
+                request,
+                action=ACTION_CREATED,
+                occurred_at=request.created_at,
+                from_status=None,
+                to_status=STATUS_PENDING,
+                reason=request.reason,
+                metadata={
+                    "reason": request.reason,
+                    "stage": request.stage,
+                    "ceo_action": request.ceo_action,
+                },
+            ),
+        )
         return request
 
     def approve(
@@ -135,13 +163,28 @@ class HumanApprovalGate:
         decided_by: str = "human",
         comment: str = "",
     ) -> ApprovalDecision:
+        from_status = request.status
         decision = self._decide(
             request,
             decision=STATUS_APPROVED,
             decided_by=decided_by,
             comment=comment,
         )
-        self._save_if_available(request)
+        self._save_with_event_if_available(
+            request,
+            self._build_event(
+                request,
+                action=ACTION_APPROVED,
+                occurred_at=decision.decided_at,
+                from_status=from_status,
+                to_status=STATUS_APPROVED,
+                reason=comment,
+                metadata={
+                    "decided_by": decided_by,
+                    "comment": comment,
+                },
+            ),
+        )
         return decision
 
     def reject(
@@ -151,13 +194,28 @@ class HumanApprovalGate:
         decided_by: str = "human",
         comment: str = "",
     ) -> ApprovalDecision:
+        from_status = request.status
         decision = self._decide(
             request,
             decision=STATUS_REJECTED,
             decided_by=decided_by,
             comment=comment,
         )
-        self._save_if_available(request)
+        self._save_with_event_if_available(
+            request,
+            self._build_event(
+                request,
+                action=ACTION_REJECTED,
+                occurred_at=decision.decided_at,
+                from_status=from_status,
+                to_status=STATUS_REJECTED,
+                reason=comment,
+                metadata={
+                    "decided_by": decided_by,
+                    "comment": comment,
+                },
+            ),
+        )
         return decision
 
     def get_request(self, approval_id: str) -> ApprovalRequest:
@@ -253,7 +311,43 @@ class HumanApprovalGate:
         if self.repository is not None:
             self.repository.save(request)
 
+    def _save_with_event_if_available(
+        self,
+        request: ApprovalRequest,
+        event: ApprovalEvent,
+    ) -> None:
+        if self.repository is None:
+            return
+        if hasattr(self.repository, "save_with_event"):
+            self.repository.save_with_event(request, event)
+            return
+        self.repository.save(request)
+        if hasattr(self.repository, "append_event"):
+            self.repository.append_event(event)
+
     def _get_from_repository(self, approval_id: str):
         if self.repository is None:
             return None
         return self.repository.get(approval_id)
+
+    def _build_event(
+        self,
+        request: ApprovalRequest,
+        *,
+        action: str,
+        occurred_at: str,
+        from_status,
+        to_status,
+        reason: str,
+        metadata: dict,
+    ) -> ApprovalEvent:
+        return ApprovalEvent(
+            event_id=self.event_id_factory(),
+            approval_id=request.approval_id,
+            action=action,
+            occurred_at=occurred_at,
+            from_status=from_status,
+            to_status=to_status,
+            reason=reason,
+            metadata=dict(metadata or {}),
+        )
