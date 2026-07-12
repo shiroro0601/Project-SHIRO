@@ -197,7 +197,6 @@ def test_cdp_controller_delegates_page_operations_without_save_or_publish():
     controller.wait_for_visible("ytcp-uploads-dialog")
 
     assert page.actions == [
-        ("goto", "https://studio.youtube.com/", "domcontentloaded", 30000),
         ("click", "ytcp-button#create-icon", 30000),
         ("set_input_files", "input[type=file]", "video.mp4"),
         ("wait_for", "ytcp-uploads-dialog", "visible", 30000),

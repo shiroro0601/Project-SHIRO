@@ -18,10 +18,15 @@ from company.youtube.studio_upload import (
     UploadPreparationResult,
     YouTubeBrowserConfig,
     YouTubeCDPConfig,
+    YouTubeMetadataPreparationResult,
+    YouTubeMetadataPreparer,
+    YouTubeMetadataValidationError,
+    YouTubeMetadataValidator,
     YouTubeStudioLoginChecker,
     YouTubeStudioLoginResult,
     YouTubeStudioSelectors,
     YouTubeStudioUploadPreparer,
+    YouTubeVideoMetadata,
 )
 
 __all__ = [
@@ -39,8 +44,13 @@ __all__ = [
     "UploadPreparationResult",
     "YouTubeBrowserConfig",
     "YouTubeCDPConfig",
+    "YouTubeMetadataPreparationResult",
+    "YouTubeMetadataPreparer",
+    "YouTubeMetadataValidationError",
+    "YouTubeMetadataValidator",
     "YouTubeStudioLoginChecker",
     "YouTubeStudioLoginResult",
     "YouTubeStudioSelectors",
     "YouTubeStudioUploadPreparer",
+    "YouTubeVideoMetadata",
 ]
