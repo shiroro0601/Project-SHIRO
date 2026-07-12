@@ -18,6 +18,12 @@ htmlcov/
 # Generated files
 outputs/
 temp/
+secrets/
+credentials.json
+client_secret*.json
+token.json
+youtube_token*.json
+*.token.json
 
 # Logs
 *.log
