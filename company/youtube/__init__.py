@@ -12,6 +12,17 @@ from company.youtube.exceptions import (
     YouTubeConfigurationError,
     YouTubeCredentialError,
 )
+from company.youtube.studio_upload import (
+    PlaywrightCDPBrowserController,
+    PlaywrightPersistentBrowserController,
+    UploadPreparationResult,
+    YouTubeBrowserConfig,
+    YouTubeCDPConfig,
+    YouTubeStudioLoginChecker,
+    YouTubeStudioLoginResult,
+    YouTubeStudioSelectors,
+    YouTubeStudioUploadPreparer,
+)
 
 __all__ = [
     "YOUTUBE_UPLOAD_SCOPE",
@@ -23,4 +34,13 @@ __all__ = [
     "YouTubeCredentialError",
     "YouTubeCredentialStore",
     "YouTubeOAuthConfig",
+    "PlaywrightCDPBrowserController",
+    "PlaywrightPersistentBrowserController",
+    "UploadPreparationResult",
+    "YouTubeBrowserConfig",
+    "YouTubeCDPConfig",
+    "YouTubeStudioLoginChecker",
+    "YouTubeStudioLoginResult",
+    "YouTubeStudioSelectors",
+    "YouTubeStudioUploadPreparer",
 ]
