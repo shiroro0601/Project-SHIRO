@@ -30,6 +30,19 @@ class RunReportMemoryAdapter:
         production_resume_completed = bool(
             getattr(report, "production_resume_completed", False)
         )
+        youtube_save_status = getattr(report, "youtube_save_status", "")
+        youtube_privacy_status = getattr(report, "youtube_privacy_status", "")
+        youtube_saved = bool(getattr(report, "youtube_saved", False))
+        youtube_published = bool(getattr(report, "youtube_published", False))
+        youtube_video_url = getattr(report, "youtube_video_url", "")
+        youtube_studio_url = getattr(report, "youtube_studio_url", "")
+        youtube_save_error = getattr(report, "youtube_save_error", "")
+        youtube_verification_status = getattr(report, "youtube_verification_status", "")
+        youtube_private_confirmed = bool(getattr(report, "youtube_private_confirmed", False))
+        youtube_duplicate_count = getattr(report, "youtube_duplicate_count", 0)
+        youtube_video_id = getattr(report, "youtube_video_id", "")
+        youtube_content_type = getattr(report, "youtube_content_type", "")
+        youtube_verification_error = getattr(report, "youtube_verification_error", "")
         summary = (
             f"{report.topic} を {report.media_mode} mode で制作し、"
             f"{scene_count} scenes / {asset_count} assets を生成しました。"
@@ -57,6 +70,16 @@ class RunReportMemoryAdapter:
             summary += "人間CEO承認後にProductionを再開し、動画生成を完了しました。"
         elif production_resumed:
             summary += "人間CEO承認後にProductionを再開しましたが、完了しませんでした。"
+        if youtube_save_status:
+            summary += f"YouTube保存状態: {youtube_save_status}。"
+        if youtube_saved:
+            summary += f"YouTubeへ{youtube_privacy_status or 'private'}で保存済み。"
+        elif youtube_save_error:
+            summary += f"YouTube保存エラー: {youtube_save_error}。"
+        if youtube_private_confirmed:
+            summary += "YouTube非公開保存をRead-only検証済み。"
+        elif youtube_verification_status:
+            summary += f"YouTube非公開保存検証状態: {youtube_verification_status}。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -87,5 +110,18 @@ class RunReportMemoryAdapter:
             "resumed_from_approval": resumed_from_approval,
             "production_resumed": production_resumed,
             "production_resume_completed": production_resume_completed,
+            "youtube_save_status": youtube_save_status,
+            "youtube_privacy_status": youtube_privacy_status,
+            "youtube_saved": youtube_saved,
+            "youtube_published": youtube_published,
+            "youtube_video_url": youtube_video_url,
+            "youtube_studio_url": youtube_studio_url,
+            "youtube_save_error": youtube_save_error,
+            "youtube_verification_status": youtube_verification_status,
+            "youtube_private_confirmed": youtube_private_confirmed,
+            "youtube_duplicate_count": youtube_duplicate_count,
+            "youtube_video_id": youtube_video_id,
+            "youtube_content_type": youtube_content_type,
+            "youtube_verification_error": youtube_verification_error,
             "summary": summary,
         }
