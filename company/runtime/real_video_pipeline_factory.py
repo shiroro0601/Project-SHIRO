@@ -74,7 +74,7 @@ class RealVideoPipelineFactory:
                 base_url=self.config.voicevox_base_url,
                 output_dir=self.config.voices_dir,
                 speaker=self.config.voicevox_speaker_id,
-                timeout=self.config.request_timeout,
+                timeout=self.config.voicevox_timeout_seconds,
             ),
             scene_video_composer=OutputPathSceneVideoComposer(
                 composer,
