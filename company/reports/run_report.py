@@ -42,6 +42,19 @@ class RunReport:
     production_resumed: bool = False
     production_resume_completed: bool = False
     approval_resume_result: dict | None = None
+    youtube_save_status: str = ""
+    youtube_privacy_status: str = ""
+    youtube_saved: bool = False
+    youtube_published: bool = False
+    youtube_video_url: str = ""
+    youtube_studio_url: str = ""
+    youtube_save_error: str = ""
+    youtube_verification_status: str = ""
+    youtube_private_confirmed: bool = False
+    youtube_duplicate_count: int = 0
+    youtube_video_id: str = ""
+    youtube_content_type: str = ""
+    youtube_verification_error: str = ""
 
 
 class RunReportWriter:
@@ -112,6 +125,19 @@ def build_run_report(
             result.get("production_resume_completed", False)
         ),
         approval_resume_result=_optional_dict(result.get("approval_resume_result")),
+        youtube_save_status=str(result.get("youtube_save_status", "")),
+        youtube_privacy_status=str(result.get("youtube_privacy_status", "")),
+        youtube_saved=bool(result.get("youtube_saved", False)),
+        youtube_published=bool(result.get("youtube_published", False)),
+        youtube_video_url=str(result.get("youtube_video_url", "")),
+        youtube_studio_url=str(result.get("youtube_studio_url", "")),
+        youtube_save_error=str(result.get("youtube_save_error", "")),
+        youtube_verification_status=str(result.get("youtube_verification_status", "")),
+        youtube_private_confirmed=bool(result.get("youtube_private_confirmed", False)),
+        youtube_duplicate_count=int(result.get("youtube_duplicate_count", 0) or 0),
+        youtube_video_id=str(result.get("youtube_video_id", "")),
+        youtube_content_type=str(result.get("youtube_content_type", "")),
+        youtube_verification_error=str(result.get("youtube_verification_error", "")),
     )
 
 
