@@ -43,6 +43,16 @@ class RunReportMemoryAdapter:
         youtube_video_id = getattr(report, "youtube_video_id", "")
         youtube_content_type = getattr(report, "youtube_content_type", "")
         youtube_verification_error = getattr(report, "youtube_verification_error", "")
+        project_shiro_youtube_status = getattr(
+            report, "project_shiro_youtube_status", ""
+        )
+        project_shiro_youtube_failure_stage = getattr(
+            report, "project_shiro_youtube_failure_stage", ""
+        )
+        project_shiro_youtube_checkpoints = getattr(
+            report, "project_shiro_youtube_checkpoints", []
+        )
+        project_shiro_youtube_run_id = getattr(report, "project_shiro_youtube_run_id", "")
         summary = (
             f"{report.topic} を {report.media_mode} mode で制作し、"
             f"{scene_count} scenes / {asset_count} assets を生成しました。"
@@ -80,6 +90,8 @@ class RunReportMemoryAdapter:
             summary += "YouTube非公開保存をRead-only検証済み。"
         elif youtube_verification_status:
             summary += f"YouTube非公開保存検証状態: {youtube_verification_status}。"
+        if project_shiro_youtube_status:
+            summary += f"統合実行状態: {project_shiro_youtube_status}。"
         return {
             "type": "real_ai_company_run",
             "topic": report.topic,
@@ -123,5 +135,11 @@ class RunReportMemoryAdapter:
             "youtube_video_id": youtube_video_id,
             "youtube_content_type": youtube_content_type,
             "youtube_verification_error": youtube_verification_error,
+            "project_shiro_youtube_status": project_shiro_youtube_status,
+            "project_shiro_youtube_failure_stage": project_shiro_youtube_failure_stage,
+            "project_shiro_youtube_checkpoints": [
+                dict(item) for item in project_shiro_youtube_checkpoints or []
+            ],
+            "project_shiro_youtube_run_id": project_shiro_youtube_run_id,
             "summary": summary,
         }

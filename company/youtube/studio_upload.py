@@ -263,6 +263,35 @@ class YouTubeStudioSelectors:
         "input[aria-label*='Search']",
         "ytcp-omnisearch input",
     )
+    studio_ready: tuple[str, ...] = (
+        "ytcp-app",
+        "ytcp-app-header",
+        "ytcp-button#create-icon",
+        "a[href*='/channel/']",
+    )
+    studio_channel_name: tuple[str, ...] = (
+        "#account-name",
+        "#entity-name",
+        "ytcp-app-header #entity-name",
+        "ytcp-header #entity-name",
+        "ytcp-text-menu #text",
+        "ytcp-channel-name",
+        "[aria-label*='チャンネル']",
+        "[aria-label*='Channel']",
+        "[title*='恋愛']",
+    )
+
+
+@dataclass
+class YouTubeStudioPageResolutionResult:
+    status: str
+    page: object | None = None
+    reused_existing_page: bool = False
+    created_new_page: bool = False
+    resolved_url: str = ""
+    candidate_count: int = 0
+    error: str = ""
+
 
 @dataclass(frozen=True)
 class YouTubeVideoMetadata:
@@ -693,14 +722,136 @@ class YouTubeStudioUploadError(Exception):
     pass
 
 
+class YouTubeStudioPageResolver:
+    def __init__(
+        self,
+        config: YouTubeCDPConfig | None = None,
+        selectors: YouTubeStudioSelectors | None = None,
+    ):
+        self.config = config or YouTubeCDPConfig()
+        self.selectors = selectors or YouTubeStudioSelectors()
+
+    def resolve(self, browser) -> YouTubeStudioPageResolutionResult:
+        try:
+            candidates = self._studio_candidates(browser)
+            if candidates:
+                page = self._best_page(candidates)
+                return YouTubeStudioPageResolutionResult(
+                    status="resolved",
+                    page=page,
+                    reused_existing_page=True,
+                    created_new_page=False,
+                    resolved_url=getattr(page, "url", "") or "",
+                    candidate_count=len(candidates),
+                )
+
+            context = self._context_for_new_page(browser)
+            page = context.new_page()
+            page.goto(
+                self.config.studio_url,
+                wait_until="domcontentloaded",
+                timeout=self.config.timeout_ms,
+            )
+            self._wait_studio_ready(page)
+            return YouTubeStudioPageResolutionResult(
+                status="resolved",
+                page=page,
+                reused_existing_page=False,
+                created_new_page=True,
+                resolved_url=getattr(page, "url", "") or self.config.studio_url,
+                candidate_count=0,
+            )
+        except Exception as exc:
+            return YouTubeStudioPageResolutionResult(
+                status="failed",
+                page=None,
+                error=str(exc) or "studio_page_resolution_failed",
+            )
+
+    def _studio_candidates(self, browser) -> list:
+        pages = []
+        for context in getattr(browser, "contexts", []) or []:
+            for page in getattr(context, "pages", []) or []:
+                if self._is_closed(page):
+                    continue
+                if self._is_studio_page(page):
+                    pages.append(page)
+        return pages
+
+    def _best_page(self, pages: list):
+        scored = sorted(
+            pages,
+            key=lambda page: (
+                self._studio_ui_score(page),
+                self._active_score(page),
+            ),
+            reverse=True,
+        )
+        return scored[0]
+
+    def _is_closed(self, page) -> bool:
+        try:
+            is_closed = getattr(page, "is_closed", None)
+            if callable(is_closed):
+                return bool(is_closed())
+            return bool(getattr(page, "closed", False))
+        except Exception:
+            return True
+
+    def _is_studio_page(self, page) -> bool:
+        parsed = urlparse(getattr(page, "url", "") or "")
+        return parsed.hostname == "studio.youtube.com"
+
+    def _studio_ui_score(self, page) -> int:
+        score = 0
+        for selector in self.selectors.details_dialog:
+            if self._page_is_visible(page, selector):
+                score += 3
+        for selector in self.selectors.studio_ready:
+            if self._page_is_visible(page, selector):
+                score += 1
+        return score
+
+    def _active_score(self, page) -> int:
+        try:
+            return int(bool(page.evaluate("() => document.visibilityState === 'visible'")))
+        except Exception:
+            return int(bool(getattr(page, "active", False)))
+
+    def _context_for_new_page(self, browser):
+        contexts = getattr(browser, "contexts", []) or []
+        if not contexts:
+            raise YouTubeStudioUploadError("cdp_context_unavailable")
+        return contexts[0]
+
+    def _wait_studio_ready(self, page) -> None:
+        for selector in self.selectors.studio_ready:
+            try:
+                page.locator(selector).first.wait_for(
+                    state="visible",
+                    timeout=self.config.timeout_ms,
+                )
+                return
+            except Exception:
+                continue
+
+    def _page_is_visible(self, page, selector: str) -> bool:
+        try:
+            return bool(page.locator(selector).first.is_visible())
+        except Exception:
+            return False
+
+
 class PlaywrightCDPBrowserController:
     def __init__(
         self,
         config: YouTubeCDPConfig | None = None,
         sync_playwright_factory=None,
+        page_resolver: YouTubeStudioPageResolver | None = None,
     ):
         self.config = config or YouTubeCDPConfig()
         self.sync_playwright_factory = sync_playwright_factory
+        self.page_resolver = page_resolver or YouTubeStudioPageResolver(self.config)
         self.playwright = None
         self.browser = None
         self.context = None
@@ -719,13 +870,12 @@ class PlaywrightCDPBrowserController:
             )
             if not getattr(self.browser, "contexts", []):
                 raise YouTubeStudioUploadError("cdp_context_unavailable")
-            self.context = self.browser.contexts[0]
-            if getattr(self.context, "pages", []):
-                self.page = self.context.pages[0]
-                self.owns_page = False
-            else:
-                self.page = self.context.new_page()
-                self.owns_page = True
+            resolution = self.page_resolver.resolve(self.browser)
+            if resolution.status != "resolved" or resolution.page is None:
+                raise YouTubeStudioUploadError(resolution.error or "studio_page_resolution_failed")
+            self.page = resolution.page
+            self.context = self._context_for_page(self.browser, self.page) or self.browser.contexts[0]
+            self.owns_page = bool(resolution.created_new_page)
             return self
         except YouTubeStudioUploadError:
             raise
@@ -734,6 +884,12 @@ class PlaywrightCDPBrowserController:
 
     def close(self):
         self.safe_disconnect()
+
+    def _context_for_page(self, browser, page):
+        for context in getattr(browser, "contexts", []) or []:
+            if page in (getattr(context, "pages", []) or []):
+                return context
+        return None
 
     def safe_disconnect(self):
         if self.owns_page and self.page is not None:
@@ -992,6 +1148,39 @@ class PlaywrightCDPBrowserController:
                 except Exception:
                     continue
         return ""
+
+    def read_channel_names(self, selectors: tuple[str, ...]) -> tuple[str, ...]:
+        names = []
+        for selector in selectors:
+            try:
+                locator = self.page.locator(selector)
+                count = min(locator.count(), 10)
+            except Exception:
+                continue
+            for index in range(count):
+                item = locator.nth(index)
+                for value in self._candidate_text_values(item):
+                    clean = _normalize_channel_name(value)
+                    if clean and clean not in names:
+                        names.append(clean)
+        return tuple(names)
+
+    def _candidate_text_values(self, locator) -> list[str]:
+        values = []
+        for getter in (
+            lambda: locator.input_value(timeout=500),
+            lambda: locator.text_content(timeout=500),
+            lambda: locator.get_attribute("aria-label"),
+            lambda: locator.get_attribute("title"),
+            lambda: locator.evaluate("el => el.innerText ?? el.textContent ?? ''"),
+        ):
+            try:
+                value = getter() or ""
+            except Exception:
+                value = ""
+            if value:
+                values.append(str(value))
+        return values
 
     def collect_video_rows(self, selectors: tuple[str, ...]) -> list[dict]:
         rows = []
@@ -2841,12 +3030,7 @@ class YouTubeStudioChannelIdentityReader:
         self.browser = browser
         self.config = config or YouTubeCDPConfig()
         self.channel_name_selectors = channel_name_selectors or (
-            "#account-name",
-            "#entity-name",
-            "ytcp-app-header #entity-name",
-            "ytcp-text-menu #text",
-            "[aria-label*='チャンネル']",
-            "[aria-label*='Channel']",
+            *YouTubeStudioSelectors().studio_channel_name,
         )
 
     def read_identity(self, expected_channel_name: str = "") -> YouTubeStudioChannelIdentity:
@@ -2855,7 +3039,9 @@ class YouTubeStudioChannelIdentityReader:
             if hasattr(browser, "open"):
                 browser.open(self.config.studio_url)
             current_url = getattr(browser, "current_url", "") or ""
-            channel_name = self._channel_name(browser)
+            self._wait_studio_ready(browser)
+            candidates = self._channel_name_candidates(browser)
+            channel_name = self._select_channel_name(candidates, expected_channel_name)
             channel_id = self._channel_id(current_url)
             if not channel_name:
                 return YouTubeStudioChannelIdentity(
@@ -2865,9 +3051,9 @@ class YouTubeStudioChannelIdentityReader:
                     studio_available="studio.youtube.com" in current_url,
                     identity_confirmed=False,
                     error="identity_unverified",
-                )
-            expected = expected_channel_name.strip()
-            confirmed = not expected or channel_name.strip() == expected
+            )
+            expected = _normalize_channel_name(expected_channel_name)
+            confirmed = not expected or _normalize_channel_name(channel_name) == expected
             return YouTubeStudioChannelIdentity(
                 channel_name=channel_name,
                 channel_id=channel_id,
@@ -2894,10 +3080,40 @@ class YouTubeStudioChannelIdentityReader:
 
     def _channel_name(self, browser) -> str:
         if hasattr(browser, "read_channel_name"):
-            return str(browser.read_channel_name()).strip()
+            return _normalize_channel_name(str(browser.read_channel_name()))
         if hasattr(browser, "read_text"):
-            return str(browser.read_text(self.channel_name_selectors)).strip()
+            return _normalize_channel_name(str(browser.read_text(self.channel_name_selectors)))
         return ""
+
+    def _channel_name_candidates(self, browser) -> tuple[str, ...]:
+        if hasattr(browser, "read_channel_names"):
+            values = browser.read_channel_names(self.channel_name_selectors)
+        elif hasattr(browser, "read_channel_name"):
+            values = (browser.read_channel_name(),)
+        elif hasattr(browser, "read_text"):
+            values = (browser.read_text(self.channel_name_selectors),)
+        else:
+            values = ()
+        unique = []
+        for value in values:
+            clean = _normalize_channel_name(str(value))
+            if clean and clean not in unique:
+                unique.append(clean)
+        return tuple(unique)
+
+    def _select_channel_name(self, candidates: tuple[str, ...], expected: str) -> str:
+        expected_clean = _normalize_channel_name(expected)
+        if expected_clean:
+            for candidate in candidates:
+                if _normalize_channel_name(candidate) == expected_clean:
+                    return candidate
+        return candidates[0] if candidates else ""
+
+    def _wait_studio_ready(self, browser) -> None:
+        if hasattr(browser, "wait_for_visible"):
+            for selector in YouTubeStudioSelectors().studio_ready:
+                if browser.wait_for_visible(selector):
+                    return
 
     def _channel_id(self, current_url: str) -> str:
         parsed = urlparse(current_url)
@@ -2905,6 +3121,10 @@ class YouTubeStudioChannelIdentityReader:
         if len(parts) >= 2 and parts[0] == "channel":
             return parts[1]
         return ""
+
+
+def _normalize_channel_name(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 class YouTubeControlledPrivateSaveRunner:
