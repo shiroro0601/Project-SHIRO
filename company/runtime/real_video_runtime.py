@@ -18,6 +18,7 @@ class RealVideoRuntimeConfig:
     fps: int = 24
     service_timeout: int = 3
     request_timeout: int = 60
+    voicevox_timeout_seconds: int = 60
 
     @classmethod
     def from_env(cls, environ=None):
@@ -48,6 +49,12 @@ class RealVideoRuntimeConfig:
             output_root=environ.get(
                 "PROJECT_SHIRO_OUTPUT_ROOT",
                 cls.output_root,
+            ),
+            voicevox_timeout_seconds=int(
+                environ.get(
+                    "PROJECT_SHIRO_VOICEVOX_TIMEOUT_SECONDS",
+                    cls.voicevox_timeout_seconds,
+                )
             ),
         )
 

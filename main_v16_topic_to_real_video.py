@@ -31,6 +31,7 @@ def parse_args(argv=None):
     )
     parser.add_argument("--ollama-model", default=None)
     parser.add_argument("--voicevox-speaker-id", type=int, default=None)
+    parser.add_argument("--voicevox-timeout-seconds", type=int, default=None)
     parser.add_argument(
         "--skip-preflight",
         action="store_true",
@@ -57,6 +58,8 @@ def build_config_from_args(args) -> RealVideoRuntimeConfig:
         config.ollama_model = args.ollama_model
     if args.voicevox_speaker_id is not None:
         config.voicevox_speaker_id = args.voicevox_speaker_id
+    if args.voicevox_timeout_seconds is not None:
+        config.voicevox_timeout_seconds = args.voicevox_timeout_seconds
     return config
 
 

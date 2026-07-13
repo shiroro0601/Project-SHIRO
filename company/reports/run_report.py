@@ -55,6 +55,10 @@ class RunReport:
     youtube_video_id: str = ""
     youtube_content_type: str = ""
     youtube_verification_error: str = ""
+    project_shiro_youtube_status: str = ""
+    project_shiro_youtube_failure_stage: str = ""
+    project_shiro_youtube_checkpoints: list[dict] = field(default_factory=list)
+    project_shiro_youtube_run_id: str = ""
 
 
 class RunReportWriter:
@@ -138,6 +142,17 @@ def build_run_report(
         youtube_video_id=str(result.get("youtube_video_id", "")),
         youtube_content_type=str(result.get("youtube_content_type", "")),
         youtube_verification_error=str(result.get("youtube_verification_error", "")),
+        project_shiro_youtube_status=str(
+            result.get("project_shiro_youtube_status", "")
+        ),
+        project_shiro_youtube_failure_stage=str(
+            result.get("project_shiro_youtube_failure_stage", "")
+        ),
+        project_shiro_youtube_checkpoints=[
+            dict(item)
+            for item in result.get("project_shiro_youtube_checkpoints", []) or []
+        ],
+        project_shiro_youtube_run_id=str(result.get("project_shiro_youtube_run_id", "")),
     )
 
 
